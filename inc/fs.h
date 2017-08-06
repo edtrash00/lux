@@ -6,4 +6,5 @@
 int fs_copy(const char *, const char *);
 
 /* rm.c */
-int fs_remove(const char *);
+int remove_file(const char *);
+int remove_dir(const char *);

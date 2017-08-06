@@ -28,10 +28,14 @@ pkg_del(const char *path)
 		err(1, "open_db %s", path);
 
 	for (current = pkg->files; current; current = current->next)
-		rval |= fs_remove(current->data);
+		rval |= remove_file(current->data);
 
 	for (current = pkg->dirs; current; current = current->next)
-		rval |= fs_remove(current->data);
+		rval |= remove_dir(current->data);
+
+	rval = remove_file(path);
+
+	close_db(pkg);
 
 	return rval;
 }
