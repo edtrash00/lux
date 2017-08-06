@@ -74,7 +74,9 @@ static void
 usage(void)
 {
 	fprintf(stderr, "usage: %s -a|-d|-i package...\n", getprogname());
+	exit(1);
 }
+
 int
 main(int argc, char *argv[])
 {
