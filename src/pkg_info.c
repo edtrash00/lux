@@ -5,43 +5,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "arg.h"
 #include "compat.h"
 #include "db.h"
-#include "fs.h"
 
-/* TODO */
-static int
-pkg_add(const char *path)
-{
-	return 0;
-}
-
-static int
-pkg_del(const char *path)
-{
-	int rval = 0;
-	Package *pkg;
-	struct node *current;
-
-	if (!(pkg = open_db(path)))
-		err(1, "open_db %s", path);
-
-	for (current = pkg->files; current; current = current->next)
-		rval |= remove_file(current->data);
-
-	for (current = pkg->dirs; current; current = current->next)
-		rval |= remove_dir(current->data);
-
-	rval = remove_file(path);
-
-	close_db(pkg);
-
-	return rval;
-}
-
-static int
-pkg_inf(const char *path)
+static void
+pkg_info(const char *path)
 {
 	Package *pkg;
 	struct node *current;
@@ -70,42 +38,26 @@ pkg_inf(const char *path)
 		printf("F: %s\n", (char *)current->data);
 
 	close_db(pkg);
-
-	return 0;
 }
 
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: %s -a|-d|-i package...\n", getprogname());
+	fprintf(stderr, "usage: %s package...", getprogname());
 	exit(1);
 }
 
 int
 main(int argc, char *argv[])
 {
-	int (*pkgfcn)(const char *) = NULL;
-	int rval = 0;
+	setprogname(argv[0]);
+	argc--, argv++;
 
-	ARGBEGIN {
-	case 'a':
-		pkgfcn = pkg_add;
-		break;
-	case 'd':
-		pkgfcn = pkg_del;
-		break;
-	case 'i':
-		pkgfcn = pkg_inf;
-		break;
-	default:
-		usage();
-	} ARGEND
-
-	if (!argv)
+	if (!argc)
 		usage();
 
 	for (; *argv; argv++)
-		rval |= pkgfcn(*argv);
+		pkg_info(*argv);
 
 	return 0;
 }
