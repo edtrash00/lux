@@ -43,7 +43,7 @@ pkg_info(const char *path)
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: %s package ...", getprogname());
+	fprintf(stderr, "usage: %s package ...\n", getprogname());
 	exit(1);
 }
 
