@@ -23,6 +23,7 @@ LIBDBSRC=\
 
 LIBFSSRC=\
 	lib/fs/cp.c\
+	lib/fs/pcat.c\
 	lib/fs/rm.c
 
 # LIB PATH

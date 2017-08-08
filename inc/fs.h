@@ -5,6 +5,9 @@
 /* cp.c */
 int copy_file(const char *, const char *);
 
+/* pcat.c */
+char * pcat(const char *, const char *);
+
 /* rm.c */
 int remove_file(const char *);
 int remove_dir(const char *);
