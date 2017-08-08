@@ -13,7 +13,7 @@ pcat(const char *f1, const char *f2)
 {
 	static char buf[PATH_MAX];
 
-	if (snprintf(buf, sizeof(buf), "%s/%s", f1, f2) => PATH_MAX) {
+	if (snprintf(buf, sizeof(buf), "%s/%s", f1, f2) >= PATH_MAX) {
 		errno = ENAMETOOLONG;
 		err(1, "snprintf %s/%s", f1, f2);
 	}

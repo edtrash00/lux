@@ -23,7 +23,7 @@ copy_lnk(struct copy *cp)
 	char path[PATH_MAX];
 	ssize_t rl;
 
-	if ((rl = readlink(cp->src, path, sizeof(path-1))) < 0) {
+	if ((rl = readlink(cp->src, path, sizeof(path)-1)) < 0) {
 		warn("readlink %s", cp->src);
 		return 1;
 	}
@@ -138,7 +138,7 @@ copy_file(const char *src, const char *dest)
 
 	switch(cp.st.st_mode & S_IFMT) {
 	case S_IFDIR:
-		if (mkdir(cp.dest, cp.st_mode) < 0) {
+		if (mkdir(cp.dest, cp.st.st_mode) < 0) {
 			warn("mkdir %s", cp.dest);
 			rval = 1;
 		}
