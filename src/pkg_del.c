@@ -35,7 +35,7 @@ pkg_del(const char *path)
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: %s package...", getprogname());
+	fprintf(stderr, "usage: %s package ...", getprogname());
 	exit(1);
 }
 
