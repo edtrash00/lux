@@ -25,7 +25,7 @@ pkg_del(const char *path)
 	for (current = pkg->dirs; current; current = current->next)
 		rval |= remove_dir(current->data);
 
-	rval = remove_file(path);
+	rval |= remove_file(path);
 
 	close_db(pkg);
 
