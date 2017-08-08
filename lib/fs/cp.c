@@ -137,6 +137,12 @@ copy_file(const char *src, const char *dest)
 	}
 
 	switch(cp.st.st_mode & S_IFMT) {
+	case S_IFDIR:
+		if (mkdir(cp.dest, cp.st_mode) < 0) {
+			warn("mkdir %s", cp.dest);
+			rval = 1;
+		}
+		break;
 	case S_IFLNK:
 		rval = copy_lnk(&cp);
 		break;
