@@ -1,6 +1,16 @@
 /* This file is part of the PkgUtils from EltaninOS
  * See LICENSE file for copyright and license details.
  */
+#define PKG_DIR "/"
+#define PKG_DAT "/var/pkg"
+
+/* compat */
+extern char *__progname;
+
+#define getprogname( ) __progname
+#define setprogname(x)
+
+/* arg */
 #define ARGBEGIN \
 for (argc--, argv++;\
      *argv && (*argv)[0] == '-' && (*argv)[1]; argc--, argv++) {\

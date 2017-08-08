@@ -5,9 +5,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "compat.h"
 #include "db.h"
 #include "fs.h"
+#include "pkg.h"
 
 static int
 pkg_del(const char *path)

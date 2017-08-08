@@ -6,8 +6,7 @@ include config.mk
 INC= inc
 
 HDR=\
-	inc/arg.h\
-	inc/compat.h\
+	inc/pkg.h\
 	inc/db.h\
 	inc/fs.h
 

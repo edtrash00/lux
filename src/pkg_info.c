@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "compat.h"
 #include "db.h"
+#include "pkg.h"
 
 static void
 pkg_info(const char *path)
