@@ -2,7 +2,7 @@
  * See LICENSE file for copyright and license details.
  */
 #define PKG_DIR "/"
-#define PKG_DAT "/var/pkg"
+#define PKG_DB "/var/pkg/db"
 
 /* compat */
 extern char *__progname;

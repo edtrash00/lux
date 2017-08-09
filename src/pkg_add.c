@@ -25,7 +25,7 @@ pkg_add(const char *path)
 	for (current = pkg->files; current; current = current->next)
 		rval |= copy_file(current->data, PKG_DIR);
 
-	rval |= copy_file(path, PKG_DAT);
+	rval |= copy_file(path, PKG_DB);
 
 	close_db(pkg);
 
