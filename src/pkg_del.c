@@ -4,6 +4,7 @@
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "db.h"
 #include "fs.h"
@@ -18,6 +19,8 @@ pkg_del(const char *path)
 
 	if (!(pkg = open_db(path)))
 		err(1, "open_db %s", path);
+
+	chdir(PKG_DIR);
 
 	for (current = pkg->files; current; current = current->next)
 		rval |= remove_file(current->data);
