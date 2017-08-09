@@ -128,8 +128,12 @@ copy_spc(struct copy *cp)
 int
 copy_file(const char *src, const char *dest)
 {
+	char buf[PATH_MAX];
 	int rval = 0;
-	struct copy cp = {.src = src, .dest = dest};
+	struct copy cp = {.src = src};
+
+	snprintf(buf, sizeof(buf), "%s/%s", dest, src);
+	cp.dest = buf;
 
 	if (lstat(src, &cp.st) < 0) {
 		warn("lstat %s", src);
