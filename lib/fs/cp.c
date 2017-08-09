@@ -130,15 +130,14 @@ copy_file(const char *src, const char *dest)
 {
 	char buf[PATH_MAX];
 	int rval = 0;
-	struct copy cp = {.src = src};
-
-	snprintf(buf, sizeof(buf), "%s/%s", dest, src);
-	cp.dest = buf;
+	struct copy cp = {.src = src, .dest = buf};
 
 	if (lstat(src, &cp.st) < 0) {
 		warn("lstat %s", src);
 		return 1;
 	}
+
+	snprintf(buf, sizeof(buf), "%s/%s", dest, src);
 
 	switch(cp.st.st_mode & S_IFMT) {
 	case S_IFDIR:
