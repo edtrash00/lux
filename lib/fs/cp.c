@@ -138,7 +138,7 @@ copy_file(const char *src, const char *dest)
 
 	if (lstat(src, &cp.st) < 0) {
 		warn("lstat %s", src);
-		return 1;
+		goto failure;
 	}
 
 	snprintf(buf, sizeof(buf), "%s/%s", dest, src);
@@ -147,7 +147,7 @@ copy_file(const char *src, const char *dest)
 	case S_IFDIR:
 		if (mkdir(cp.dest, cp.st.st_mode) < 0) {
 			warn("mkdir %s", cp.dest);
-			rval = 1;
+			goto failure;
 		}
 		break;
 	case S_IFLNK:
@@ -161,5 +161,9 @@ copy_file(const char *src, const char *dest)
 		break;
 	}
 
+	goto done;
+failure:
+	rval = 1;
+done:
 	return rval;
 }
