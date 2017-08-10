@@ -11,7 +11,7 @@
 /* number plus colon */
 #define PREFIX (sizeof(char) * 2)
 
-enum Type {
+enum {
 	Name = '0',
 	Version = '1',
 	License = '2',
