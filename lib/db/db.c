@@ -8,7 +8,8 @@
 
 #include "db.h"
 
-#define TYPE_SIZE 2
+/* number plus colon */
+#define PREFIX (sizeof(char) * 2)
 
 enum Type {
 	Name = '0',
@@ -54,28 +55,28 @@ open_db(const char *file)
 		buf[len - 1] = '\0';
 		switch (*buf) {
 		case Name:
-			pkg->name = estrdup(buf + TYPE_SIZE);
+			pkg->name = estrdup(buf + PREFIX);
 			break;
 		case Version:
-			pkg->version = estrdup(buf + TYPE_SIZE);
+			pkg->version = estrdup(buf + PREFIX);
 			break;
 		case License:
-			pkg->license = estrdup(buf + TYPE_SIZE);
+			pkg->license = estrdup(buf + PREFIX);
 			break;
 		case Description:
-			pkg->description = estrdup(buf + TYPE_SIZE);
+			pkg->description = estrdup(buf + PREFIX);
 			break;
 		case RDependency:
-			pushnode(&pkg->rdeps, addelement(buf + TYPE_SIZE));
+			pushnode(&pkg->rdeps, addelement(buf + PREFIX));
 			break;
 		case MDependency:
-			pushnode(&pkg->mdeps, addelement(buf + TYPE_SIZE));
+			pushnode(&pkg->mdeps, addelement(buf + PREFIX));
 			break;
 		case Directory:
-			pushnode(&pkg->dirs,  addelement(buf + TYPE_SIZE));
+			pushnode(&pkg->dirs,  addelement(buf + PREFIX));
 			break;
 		case File:
-			pushnode(&pkg->files, addelement(buf + TYPE_SIZE));
+			pushnode(&pkg->files, addelement(buf + PREFIX));
 			break;
 		}
 	}
