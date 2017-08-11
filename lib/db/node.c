@@ -13,10 +13,16 @@ addelement(const void *value)
 	struct node *new;
 
 	if (!(new = malloc(1 * sizeof(*new))))
-		err(1, "malloc");
+		goto failure;
 
-	new->data = strdup(value);
+	if (!(new->data = strdup(value)))
+		goto failure;
 
+	goto done;
+failure:
+	free(new);
+	new = NULL;
+done:
 	return new;
 }
 
@@ -38,9 +44,17 @@ popnode(struct node **sp)
 	return old;
 }
 
-void
+int
 pushnode(struct node **sp, struct node *new)
 {
-	new->next = *sp;
-	*sp = new;
+	int rval = 0;
+
+	if (new) {
+		new->next = *sp;
+		*sp = new;
+	} else {
+		rval = -1;
+	}
+
+	return rval;
 }

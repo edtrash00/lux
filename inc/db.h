@@ -24,4 +24,4 @@ void close_db(Package *);
 struct node * addelement(const void *);
 void freenode(struct node *);
 struct node * popnode(struct node **);
-void pushnode(struct node **, struct node *);
+int pushnode(struct node **, struct node *);

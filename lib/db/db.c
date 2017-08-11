@@ -22,29 +22,21 @@ enum {
 	File = '7'
 };
 
-static char *
-estrdup(const char *s)
-{
-	char *new;
-	if (!(new = strdup(s)))
-		err(1, "strdup");
-	return new;
-}
-
 Package *
 open_db(const char *file)
 {
-	char *buf = NULL;
+	char **sp, *buf = NULL;
 	FILE *fp;
 	Package *pkg;
 	size_t size = 0;
 	ssize_t len;
+	struct node **np;
 
 	if (!(fp = fopen(file, "r")))
-		return NULL;
+		goto failure;
 
 	if (!(pkg = malloc(1 * sizeof(*pkg))))
-		err(1, "malloc");
+		goto err;
 
 	pkg->rdeps = NULL;
 	pkg->mdeps = NULL;
@@ -52,35 +44,50 @@ open_db(const char *file)
 	pkg->files = NULL;
 
 	while ((len = getline(&buf, &size, fp)) != EOF) {
+		/* remove trailing newline */
 		buf[len - 1] = '\0';
+		sp = NULL;
+		np = NULL;
+
 		switch (*buf) {
 		case Name:
-			pkg->name = estrdup(buf + PREFIX);
+			sp = &pkg->name;
 			break;
 		case Version:
-			pkg->version = estrdup(buf + PREFIX);
+			sp = &pkg->version;
 			break;
 		case License:
-			pkg->license = estrdup(buf + PREFIX);
+			sp = &pkg->license;
 			break;
 		case Description:
-			pkg->description = estrdup(buf + PREFIX);
+			sp = &pkg->description;
 			break;
 		case RDependency:
-			pushnode(&pkg->rdeps, addelement(buf + PREFIX));
+			np = &pkg->rdeps;
 			break;
 		case MDependency:
-			pushnode(&pkg->mdeps, addelement(buf + PREFIX));
+			np = &pkg->mdeps;
 			break;
 		case Directory:
-			pushnode(&pkg->dirs,  addelement(buf + PREFIX));
+			np = &pkg->dirs;
 			break;
 		case File:
-			pushnode(&pkg->files, addelement(buf + PREFIX));
+			np = &pkg->files;
 			break;
 		}
+
+		if (sp && !(*sp = strdup(buf + PREFIX)))
+			goto err;
+		if (np && pushnode(np, addelement(buf + PREFIX)))
+			goto err;
 	}
 
+	goto done;
+err:
+	close_db(pkg);
+failure:
+	pkg = NULL;
+done:
 	free(buf);
 	fclose(fp);
 
