@@ -78,7 +78,7 @@ open_db(const char *file)
 
 		if (sp && !(*sp = strdup(buf + PREFIX)))
 			goto err;
-		if (np && pushnode(np, addelement(buf + PREFIX)))
+		if (np && pushnode(np, addelement(buf + PREFIX)) < 0)
 			goto err;
 	}
 
