@@ -22,7 +22,7 @@ LIBDBSRC=\
 	lib/db/node.c
 
 LIBFSSRC=\
-	lib/fs/cp.c\
+	lib/fs/mv.c\
 	lib/fs/rm.c
 
 # LIB PATH

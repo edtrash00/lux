@@ -20,12 +20,12 @@ pkg_add(const char *path)
 		err(1, "open_db %s", path);
 
 	for (current = pkg->dirs; current; current = current->next)
-		rval |= copy_file(current->data, PKG_DIR);
+		rval |= move_file(current->data, PKG_DIR);
 
 	for (current = pkg->files; current; current = current->next)
-		rval |= copy_file(current->data, PKG_DIR);
+		rval |= move_file(current->data, PKG_DIR);
 
-	rval |= copy_file(path, PKG_DB);
+	rval |= move_file(path, PKG_DB);
 
 	close_db(pkg);
 

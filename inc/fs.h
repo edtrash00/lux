@@ -3,7 +3,7 @@
  */
 
 /* cp.c */
-int copy_file(const char *, const char *);
+int move_file(const char *, const char *);
 
 /* rm.c */
 int remove_file(const char *);
