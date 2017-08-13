@@ -36,7 +36,7 @@ open_db(const char *file)
 		goto failure;
 
 	if (!(pkg = malloc(1 * sizeof(*pkg))))
-		goto err;
+		goto failure;
 
 	pkg->rdeps = NULL;
 	pkg->mdeps = NULL;
