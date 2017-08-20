@@ -90,7 +90,7 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	int (*pkg)(const char *), rval = 0, prepare = 0;
+	int (*pkg)(const char *), rval = 0;
 
 	setprogname(argv[0]);
 
