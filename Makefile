@@ -12,9 +12,7 @@ HDR=\
 
 # SOURCE
 BIN=\
-	src/pkg_add\
-	src/pkg_del\
-	src/pkg_info
+	src/pkg
 
 # LIB SOURCE
 LIBDBSRC=\
