@@ -47,14 +47,11 @@ popnode(struct node **sp)
 int
 pushnode(struct node **sp, struct node *new)
 {
-	int rval = 0;
+	if (!new)
+		return -1;
 
-	if (new) {
-		new->next = *sp;
-		*sp = new;
-	} else {
-		rval = -1;
-	}
+	new->next = *sp;
+	*sp = new;
 
 	return rval;
 }

@@ -20,7 +20,7 @@ move_file(const char *src, const char *dest)
 
 	if (lstat(src, &st) < 0) {
 		warn("lstat %s", src);
-		goto failure;
+		return 1;
 	}
 
 	snprintf(buf, sizeof(buf), "%s/%s", dest, src);
@@ -30,20 +30,16 @@ move_file(const char *src, const char *dest)
 		if (mkdir(buf, st.st_mode) < 0
 		    && errno != EEXIST) {
 			warn("mkdir %s", buf);
-			goto failure;
+			return 1;
 		}
 		break;
 	default:
 		if (rename(src, buf) < 0) {
 			warn("rename %s", buf);
-			goto failure;
+			return 1;
 		}
 		break;
 	}
 
-	goto done;
-failure:
-	rval = 1;
-done:
 	return rval;
 }

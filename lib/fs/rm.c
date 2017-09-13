@@ -10,11 +10,9 @@
 int
 remove_file(const char *pathname)
 {
-	int rval = 0;
-
 	if (unlink(pathname) < 0) {
 		warn("unlink %s", pathname);
-		rval = 1;
+		return 1;
 	}
 
 	return rval;
@@ -23,11 +21,9 @@ remove_file(const char *pathname)
 int
 remove_dir(const char *pathname)
 {
-	int rval = 0;
-
 	if (rmdir(pathname) < 0 && errno != ENOTEMPTY) {
 		warn("rmdir %s", pathname);
-		rval = 1;
+		return 1;
 	}
 
 	return rval;
