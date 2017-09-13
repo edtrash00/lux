@@ -15,7 +15,6 @@ int
 move_file(const char *src, const char *dest)
 {
 	char buf[PATH_MAX];
-	int rval = 0;
 	struct stat st;
 
 	if (lstat(src, &st) < 0) {
@@ -41,5 +40,5 @@ move_file(const char *src, const char *dest)
 		break;
 	}
 
-	return rval;
+	return 0;
 }

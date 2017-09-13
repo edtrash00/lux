@@ -53,5 +53,5 @@ pushnode(struct node **sp, struct node *new)
 	new->next = *sp;
 	*sp = new;
 
-	return rval;
+	return 0;
 }

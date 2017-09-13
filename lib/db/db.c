@@ -14,11 +14,12 @@
 enum Type {
 	Name        = '0',
 	Version     = '1',
-	Description = '2',
-	RDependency = '3',
-	MDependency = '4',
-	Directory   = '5',
-	File        = '6'
+	License     = '2',
+	Description = '3',
+	RDependency = '4',
+	MDependency = '5',
+	Directory   = '6',
+	File        = '7'
 };
 
 Package *

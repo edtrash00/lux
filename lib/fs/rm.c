@@ -15,7 +15,7 @@ remove_file(const char *pathname)
 		return 1;
 	}
 
-	return rval;
+	return 0;
 }
 
 int
@@ -26,5 +26,5 @@ remove_dir(const char *pathname)
 		return 1;
 	}
 
-	return rval;
+	return 0;
 }
