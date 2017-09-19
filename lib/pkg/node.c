@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "db.h"
+#include "pkg.h"
 
 struct node *
 addelement(const void *value)

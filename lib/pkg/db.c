@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "db.h"
+#include "pkg.h"
 
 /* number plus colon */
 #define PREFIX (sizeof(char) * 2)

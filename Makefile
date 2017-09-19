@@ -6,34 +6,29 @@ include config.mk
 INC= inc
 
 HDR=\
-	inc/pkg.h\
-	inc/db.h\
-	inc/fs.h
+	inc/arg.h\
+	inc/compat.h\
+	inc/pkg.h
 
 # SOURCE
 BIN=\
 	src/pkg
 
 # LIB SOURCE
-LIBDBSRC=\
-	lib/db/db.c\
-	lib/db/node.c
-
-LIBFSSRC=\
-	lib/fs/mv.c\
-	lib/fs/rm.c
+LIBPKGSRC=\
+	lib/pkg/db.c\
+	lib/pkg/fs.c\
+	lib/pkg/node.c
 
 # LIB PATH
-LIBDB= lib/libdb.a
-LIBFS= lib/libfs.a
+LIBPKG= lib/libpkg.a
 
 # LIB OBJS
-LIBDBOBJ= $(LIBDBSRC:.c=.o)
-LIBFSOBJ= $(LIBFSSRC:.c=.o)
+LIBPKGOBJ= $(LIBPKGSRC:.c=.o)
 
 # ALL
-LIB= $(LIBDB) $(LIBFS)
-OBJ= $(BIN:=.o) $(LIBDBOBJ) $(LIBFSOBJ)
+LIB= $(LIBPKG)
+OBJ= $(BIN:=.o) $(LIBPKGOBJ)
 SRC= $(BIN:=.c)
 
 # VAR RULES
@@ -50,17 +45,13 @@ $(OBJ): $(HDR) config.mk
 	$(CC) $(CFLAGS) $(CPPFLAGS) -I $(INC) -o $@ -c $<
 
 # LIBRARIES RULES
-$(LIBDB): $(LIBDBOBJ)
-	$(AR) rc $@ $?
-	$(RANLIB) $@
-
-$(LIBFS): $(LIBFSOBJ)
+$(LIBPKG): $(LIBPKGOBJ)
 	$(AR) rc $@ $?
 	$(RANLIB) $@
 
 # USER ACTIONS
 clean:
-	rm -f $(BIN) $(OBJ) $(LIB) utilchest
+	rm -f $(BIN) $(OBJ) $(LIB)
 
 .PHONY:
 	all clean

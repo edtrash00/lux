@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "db.h"
-#include "fs.h"
 #include "pkg.h"
 
 static int
@@ -19,11 +17,11 @@ add(const char *path)
 	if (!(pkg = open_db(path)))
 		err(1, "open_db %s", path);
 
-	rval = move_file(path, PKG_DIR);
+	rval = mv(path, PKG_DIR);
 	for (current = pkg->dirs; current; current = current->next)
-		rval |= move_file(current->data, PKG_DIR);
+		rval |= mv(current->data, PKG_DIR);
 	for (current = pkg->files; current; current = current->next)
-		rval |= move_file(current->data, PKG_DIR);
+		rval |= mv(current->data, PKG_DIR);
 	close_db(pkg);
 
 	return rval;
@@ -39,11 +37,11 @@ del(const char *path)
 	if (!(pkg = open_db(path)))
 		err(1, "open_db %s", path);
 
-	rval = remove_file(path);
+	rval = wunlink(path);
 	for (current = pkg->files; current; current = current->next)
-		rval |= remove_file(current->data);
+		rval |= wunlink(current->data);
 	for (current = pkg->dirs; current; current = current->next)
-		rval |= remove_dir(current->data);
+		rval |= wrmdir(current->data);
 	close_db(pkg);
 
 	return rval;

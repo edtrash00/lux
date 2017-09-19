@@ -9,10 +9,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "fs.h"
+#include "pkg.h"
 
 int
-move_file(const char *src, const char *dest)
+mv(const char *src, const char *dest)
 {
 	char buf[PATH_MAX];
 	struct stat st;
@@ -38,6 +38,28 @@ move_file(const char *src, const char *dest)
 			return 1;
 		}
 		break;
+	}
+
+	return 0;
+}
+
+int
+wunlink(const char *pathname)
+{
+	if (unlink(pathname) < 0) {
+		warn("unlink %s", pathname);
+		return 1;
+	}
+
+	return 0;
+}
+
+int
+wrmdir(const char *pathname)
+{
+	if (rmdir(pathname) < 0 && errno != ENOTEMPTY) {
+		warn("rmdir %s", pathname);
+		return 1;
 	}
 
 	return 0;
