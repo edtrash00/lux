@@ -1,4 +1,5 @@
 #include <err.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -11,8 +12,12 @@ pkg_add(const char *path)
 	Package *pkg;
 	struct node *np;
 
-	if (!(pkg = open_db(path)))
-		err(1, "open_db %s", path);
+	if (!(pkg = open_db(path))) {
+		if (errno == ENOMEM)
+			err(1, NULL);
+		warn("open_db %s", path);
+		return 1;
+	}
 
 	rval = mv(path, PKG_DIR);
 	for (np = pkg->dirs; np; np = np->next)
