@@ -19,7 +19,7 @@ pkg_add(const char *path)
 		return 1;
 	}
 
-	rval = mv(path, PKG_DIR);
+	rval = mv(path, PKG_LDB);
 	for (np = pkg->dirs; np; np = np->next)
 		rval |= mv(np->data, PKG_DIR);
 	for (np = pkg->files; np; np = np->next)
@@ -50,5 +50,5 @@ main(int argc, char *argv[])
 	for (; *argv; argc--, argv++)
 		rval |= pkg_add(*argv);
 
-	return 0;
+	return rval;
 }

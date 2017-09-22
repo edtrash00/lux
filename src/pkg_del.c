@@ -50,5 +50,5 @@ main(int argc, char *argv[])
 	for (; *argv; argc--, argv++)
 		rval |= pkg_del(*argv);
 
-	return 0;
+	return rval;
 }
