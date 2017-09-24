@@ -1,8 +1,17 @@
 #include "arg.h"
 #include "compat.h"
 
+/* PKG_DIR: ROOT  PATH
+ * PKG_LDB: LOCAL DATABASE
+ * PKG_RDB: REPO  DATABASE
+ * PKG SRC: REPO  FILE
+ * PKG TMP: TMP   DIR
+ */
 #define PKG_DIR "/"
-#define PKG_DB "/var/pkg/db"
+#define PKG_LDB "/var/pkg/ldb"
+#define PKG_RDB "/var/pkg/rdb"
+#define PKG_SRC "/var/pkg/source.list"
+#define PKG_TMP "/tmp"
 
 struct node {
 	void *data;
@@ -20,10 +29,12 @@ typedef struct {
 	struct node *rdeps;
 } Package;
 
-
 /* db.c */
 Package * open_db(const char *);
 void close_db(Package *);
+
+/* download.c */
+int download(char *, const char *, const char *);
 
 /* fs.c */
 int mv(const char *, const char *);
