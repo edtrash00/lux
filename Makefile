@@ -55,7 +55,7 @@ $(OBJ): $(HDR) config.mk
 
 # SUFFIX RULES
 .o:
-	$(CC) $(LDFLAGS) -o $@ $< $(LIB)
+	$(CC) $(LDFLAGS) -o $@ $< $(LIB) $(LDLIBS)
 
 .c.o:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -I $(INC) -o $@ -c $<

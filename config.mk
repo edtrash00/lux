@@ -10,7 +10,7 @@ LDFLAGS  = -Os -s
 CPPFLAGS += -DNETBSD -DHAVE_POLL_H
 # SSL SUPORT
 CPPFLAGS += -DWITH_SSL
-LDFLAGS  += -lssl -lcrypto
+LDLIBS    = -lssl -lcrypto
 
 # PATHS
 PREFIX = /usr/local
