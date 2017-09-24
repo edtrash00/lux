@@ -41,8 +41,7 @@ open_db(const char *file)
 	pkg->files = NULL;
 
 	while ((len = getline(&buf, &size, fp)) != EOF) {
-		/* remove trailing newline */
-		buf[len - 1] = '\0';
+		buf[len - 1] = '\0'; /* remove trailing newline */
 		sp = NULL;
 		np = NULL;
 
