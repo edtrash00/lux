@@ -1,5 +1,6 @@
 #include <err.h>
 #include <fcntl.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -12,7 +13,7 @@ download(char *URL, const char *path, const char *flags)
 	char buf[BUFSIZ];
 	int rval = 0, fd = -1;
 	ssize_t readcnt;
-	struct fetchIO *f;
+	struct fetchIO *f = NULL;
 	struct url *url = NULL;
 
 	if (!(url = fetchParseURL(URL)))
