@@ -11,7 +11,7 @@ download(char *URL, const char *path, const char *flags)
 {
 	char buf[BUFSIZ];
 	int rval = 0, fd = -1;
-	size_t readcnt;
+	ssize_t readcnt;
 	struct fetchIO *f;
 	struct url *url = NULL;
 
@@ -27,6 +27,11 @@ download(char *URL, const char *path, const char *flags)
 	while ((readcnt = fetchIO_read(f, buf, sizeof(buf))) > 0)
 		if (write(fd, buf, readcnt) != readcnt)
 			goto failure;
+
+	if (readcnt < 0) {
+		warn("read %s", basename(URL));
+		goto failure;
+	}
 
 	goto done;
 failure:

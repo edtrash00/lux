@@ -21,7 +21,8 @@ static int
 pkg_fetch(const char *path)
 {
 	char file[FLEN], buf[ULEN], url[PATH_MAX], tmp[PATH_MAX];
-	int readcnt, fd = -1, rval = 0;
+	int fd = -1, rval = 0;
+	ssize_t readcnt, bsize = 0;
 	Package *pkg;
 
 	if (!(pkg = open_db(path))) {
@@ -36,11 +37,15 @@ pkg_fetch(const char *path)
 		goto failure;
 	}
 
-	while (read(fd, buf, sizeof(buf)) > 0)
-		continue;
+	while ((readcnt = read(fd, buf, sizeof(buf))) > 0)
+		bsize += readcnt;
 
-	readcnt = strlen(buf);
-	buf[readcnt-1] = '\0'; /* remove trailing newline */
+	if (readcnt < 0) {
+		warn("read %s", PKG_SRC);
+		goto failure;
+	}
+
+	buf[bsize-1] = '\0'; /* remove trailing newline */
 
 	snprintf(file, sizeof(file), "%s-%s%s", pkg->name, pkg->version, fmt);
 	snprintf(url, sizeof(url), "%s/%s", buf, file);
