@@ -35,10 +35,14 @@ open_db(const char *file)
 	if (!(pkg = malloc(1 * sizeof(*pkg))))
 		goto failure;
 
-	pkg->rdeps = NULL;
-	pkg->mdeps = NULL;
-	pkg->dirs  = NULL;
-	pkg->files = NULL;
+	pkg->name        = NULL;
+	pkg->version     = NULL;
+	pkg->license     = NULL;
+	pkg->description = NULL;
+	pkg->rdeps       = NULL;
+	pkg->mdeps       = NULL;
+	pkg->dirs        = NULL;
+	pkg->files       = NULL;
 
 	while ((len = getline(&buf, &size, fp)) != EOF) {
 		buf[len - 1] = '\0'; /* remove trailing newline */
@@ -85,7 +89,9 @@ failure:
 	pkg = NULL;
 done:
 	free(buf);
-	fclose(fp);
+
+	if (fp)
+		fclose(fp);
 
 	return pkg;
 }
@@ -99,11 +105,11 @@ close_db(Package *pkg) {
 
 	while (pkg->rdeps)
 		freenode(popnode(&pkg->rdeps));
-	while(pkg->mdeps)
+	while (pkg->mdeps)
 		freenode(popnode(&pkg->mdeps));
-	while(pkg->dirs)
+	while (pkg->dirs)
 		freenode(popnode(&pkg->dirs));
-	while(pkg->files)
+	while (pkg->files)
 		freenode(popnode(&pkg->files));
 
 	free(pkg);
