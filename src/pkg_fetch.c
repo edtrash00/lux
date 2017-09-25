@@ -15,7 +15,7 @@
 #define FLEN 512
 #define ULEN 800
 
-static const char *fmt;
+static const char *fmt = PKG_FMT;
 
 static int
 pkg_fetch(const char *path)
