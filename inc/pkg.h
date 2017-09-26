@@ -42,8 +42,6 @@ int download(char *, const char *, const char *);
 
 /* fs.c */
 int mv(const char *, const char *);
-int wunlink(const char *);
-int wrmdir(const char *);
 
 /* node.c */
 struct node * addelement(const void *);

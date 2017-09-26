@@ -1,6 +1,5 @@
 #include <err.h>
 #include <fcntl.h>
-#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -29,10 +28,8 @@ download(char *URL, const char *path, const char *flags)
 		if (write(fd, buf, readcnt) != readcnt)
 			goto failure;
 
-	if (readcnt < 0) {
-		warn("read %s", basename(URL));
+	if (readcnt < 0)
 		goto failure;
-	}
 
 	goto done;
 failure:

@@ -20,11 +20,11 @@ del(const char *path)
 		return 1;
 	}
 
-	rval = wunlink(path);
+	rval = unlink(path);
 	for (np = pkg->files; np; np = np->next)
-		rval |= wunlink(np->data);
+		rval |= unlink(np->data);
 	for (np = pkg->dirs; np; np = np->next)
-		rval |= wrmdir(np->data);
+		rval |= rmdir(np->data);
 	close_db(pkg);
 
 	return rval;
