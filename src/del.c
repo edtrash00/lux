@@ -3,10 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "lux.h"
 #include "pkg.h"
 
-static int
-pkg_del(const char *path)
+int
+del(const char *path)
 {
 	int rval = 0;
 	Package *pkg;
@@ -25,30 +26,6 @@ pkg_del(const char *path)
 	for (np = pkg->dirs; np; np = np->next)
 		rval |= wrmdir(np->data);
 	close_db(pkg);
-
-	return rval;
-}
-
-static void
-usage(void)
-{
-	fprintf(stderr, "usage: %s package ...\n", getprogname());
-	exit(1);
-}
-
-int
-main(int argc, char *argv[])
-{
-	int rval = 0;
-
-	setprogname(argv[0]);
-	argc--, argv++;
-
-	if (!argc)
-		usage();
-
-	for (; *argv; argc--, argv++)
-		rval |= pkg_del(*argv);
 
 	return rval;
 }

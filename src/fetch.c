@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include "fetch.h"
+#include "lux.h"
 #include "pkg.h"
 
 #define FLEN 512
@@ -17,8 +18,8 @@
 
 static const char *fmt = PKG_FMT;
 
-static int
-pkg_fetch(const char *path)
+int
+fetch(const char *path)
 {
 	char file[FLEN], buf[ULEN], url[PATH_MAX], tmp[PATH_MAX];
 	int fd = -1, rval = 0;
@@ -67,30 +68,6 @@ done:
 
 	if (fd != -1)
 		close(fd);
-
-	return rval;
-}
-
-static void
-usage(void)
-{
-	fprintf(stderr, "usage: %s package ...\n", getprogname());
-	exit(1);
-}
-
-int
-main(int argc, char *argv[])
-{
-	int rval = 0;
-
-	setprogname(argv[0]);
-	argc--, argv++;
-
-	if (!argc)
-		usage();
-
-	for (; *argv; argc--, argv++)
-		rval |= pkg_fetch(*argv);
 
 	return rval;
 }

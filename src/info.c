@@ -3,10 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "lux.h"
 #include "pkg.h"
 
-static int
-pkg_info(const char *path)
+int
+info(const char *path)
 {
 	Package *pkg;
 	struct node *np;
@@ -39,28 +40,4 @@ pkg_info(const char *path)
 	close_db(pkg);
 
 	return 0;
-}
-
-static void
-usage(void)
-{
-	fprintf(stderr, "usage: %s package ...\n", getprogname());
-	exit(1);
-}
-
-int
-main(int argc, char *argv[])
-{
-	int rval = 0;
-
-	setprogname(argv[0]);
-	argc--, argv++;
-
-	if (!argc)
-		usage();
-
-	for (; *argv; argc--, argv++)
-		rval |= pkg_info(*argv);
-
-	return rval;
 }
