@@ -1,12 +1,8 @@
 #include <sys/stat.h>
 
 #include <err.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <libgen.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include "fetch.h"

@@ -20,7 +20,7 @@ int
 main(int argc, char *argv[])
 {
 	int (*fn)(const char *, Package *);
-	int opts = 0, rval = 0;
+	int rval = 0;
 	Package *pkg;
 
 	setprogname(argv[0]);
@@ -42,8 +42,14 @@ main(int argc, char *argv[])
 
 	argc--, argv++; 
 
-	for (; *argv; argc--, argv++)
-		rval |= fn(*argv);
+	for (; *argv; argc--, argv++) {
+		if (warn_open_db(&pkg, *argv)) {
+			rval = 1;
+			continue;
+		}
+		rval |= fn(*argv, pkg);
+		close_db(pkg);
+	}
 
 	return rval;
 }

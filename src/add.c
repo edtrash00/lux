@@ -1,7 +1,4 @@
 #include <err.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 #include "lux.h"
 
@@ -12,9 +9,14 @@ add(const char *path, Package *pkg)
 	struct node *np;
 
 	for (np = pkg->dirs; np; np = np->next)
-		rval |= mv(np->data, PKG_DIR);
+		rval |= warn_mv(np->data, PKG_DIR);
 	for (np = pkg->files; np; np = np->next)
-		rval |= mv(np->data, PKG_DIR);
+		rval |= warn_mv(np->data, PKG_DIR);
+
+	if (copy(path, PKG_LDB) < 0) {
+		warn("cp %s -> %s", path, PKG_LDB);
+		return 1;
+	}
 
 	return rval;
 }

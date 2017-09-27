@@ -38,7 +38,9 @@ void close_db(Package *);
 int download(char *, const char *, const char *);
 
 /* fs.c */
-int mv(const char *, const char *);
+int copy(const char *, const char *);
+int move(const char *, const char *);
+int remove(const char *);
 
 /* node.c */
 struct node * addelement(const void *);

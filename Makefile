@@ -20,6 +20,7 @@ BIN=\
 
 # LIB SOURCE
 LIBBINSRC=\
+	src/act.c\
 	src/add.c\
 	src/del.c\
 	src/fetch.c\
