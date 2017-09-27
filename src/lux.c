@@ -56,16 +56,16 @@ main(int argc, char *argv[])
 
 		switch (fn) {
 		case ADD:
-			add(pkg, *argv);
+			rval |= add(pkg, *argv);
 			break;
 		case DEL:
-			del(pkg, *argv);
+			rval |= del(pkg, *argv);
 			break;
 		case FETCH:
-			fetch(pkg);
+			rval |= fetch(pkg);
 			break;
 		case INFO:
-			info(pkg);
+			rval |= info(pkg);
 			break;
 		}
 
