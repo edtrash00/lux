@@ -1,6 +1,3 @@
-#include "arg.h"
-#include "compat.h"
-
 /* PKG_DIR: ROOT  PATH
  * PKG_LDB: LOCAL DATABASE
  * PKG_RDB: REPO  DATABASE
