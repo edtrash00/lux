@@ -14,7 +14,7 @@
 static const char *fmt = PKG_FMT;
 
 int
-fetch(const char *path, Package *pkg)
+fetch(Package *pkg)
 {
 	char file[FLEN], buf[ULEN], url[PATH_MAX], tmp[PATH_MAX];
 	int fd = -1, rval = 0;

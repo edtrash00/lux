@@ -1,7 +1,7 @@
 #include "lux.h"
 
 int
-del(const char *path, Package *pkg)
+del(Package *pkg, const char *path)
 {
 	int rval = 0;
 	struct node *np;

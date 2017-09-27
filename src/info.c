@@ -3,7 +3,7 @@
 #include "lux.h"
 
 int
-info(const char *path, Package *pkg)
+info(Package *pkg)
 {
 	struct node *np;
 

@@ -4,6 +4,13 @@
 
 #include "lux.h"
 
+enum Fn {
+	ADD   = 0,
+	DEL   = 1,
+	FETCH = 2,
+	INFO  = 3
+};
+
 static void
 usage(void)
 {
@@ -19,8 +26,7 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	int (*fn)(const char *, Package *);
-	int rval = 0;
+	int fn, rval = 0;
 	Package *pkg;
 
 	setprogname(argv[0]);
@@ -30,13 +36,13 @@ main(int argc, char *argv[])
 		usage();
 
 	if (!strcmp(*argv, "add"))
-		fn = add;
+		fn = ADD;
 	else if (!strcmp(*argv, "del"))
-		fn = del;
+		fn = DEL;
 	else if (!strcmp(*argv, "fetch"))
-		fn = fetch;
+		fn = FETCH;
 	else if (!strcmp(*argv, "info"))
-		fn = info;
+		fn = INFO;
 	else
 		usage();
 
@@ -47,7 +53,22 @@ main(int argc, char *argv[])
 			rval = 1;
 			continue;
 		}
-		rval |= fn(*argv, pkg);
+
+		switch (fn) {
+		case ADD:
+			add(pkg, *argv);
+			break;
+		case DEL:
+			del(pkg, *argv);
+			break;
+		case FETCH:
+			fetch(pkg);
+			break;
+		case INFO:
+			info(pkg);
+			break;
+		}
+
 		close_db(pkg);
 	}
 
