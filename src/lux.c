@@ -19,9 +19,9 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	int (*fn)(const char *);
+	int (*fn)(const char *, Package *);
 	int opts = 0, rval = 0;
-	Package *pkg = NULL;
+	Package *pkg;
 
 	setprogname(argv[0]);
 	argc--, argv++;
