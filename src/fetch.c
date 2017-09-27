@@ -11,7 +11,6 @@
 
 #include "fetch.h"
 #include "lux.h"
-#include "pkg.h"
 
 #define FLEN 512
 #define ULEN 800
@@ -19,19 +18,11 @@
 static const char *fmt = PKG_FMT;
 
 int
-fetch(const char *path)
+fetch(const char *path, Package *pkg)
 {
 	char file[FLEN], buf[ULEN], url[PATH_MAX], tmp[PATH_MAX];
 	int fd = -1, rval = 0;
 	ssize_t readcnt, bsize = 0;
-	Package *pkg;
-
-	if (!(pkg = open_db(path))) {
-		if (errno == ENOMEM)
-			err(1, NULL);
-		warn("open_db %s", path);
-		return 1;
-	}
 
 	if ((fd = open(PKG_SRC, O_RDONLY, 0)) < 0) {
 		warn("open %s", PKG_SRC);
@@ -64,8 +55,6 @@ fetch(const char *path)
 failure:
 	rval = 1;
 done:
-	close_db(pkg);
-
 	if (fd != -1)
 		close(fd);
 

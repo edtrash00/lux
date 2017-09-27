@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "lux.h"
-#include "pkg.h"
 
 static void
 usage(void)
@@ -22,6 +21,7 @@ main(int argc, char *argv[])
 {
 	int (*fn)(const char *);
 	int opts = 0, rval = 0;
+	Package *pkg = NULL;
 
 	setprogname(argv[0]);
 	argc--, argv++;
