@@ -19,13 +19,6 @@ BIN=\
 	src/lux
 
 # LIB SOURCE
-LIBBINSRC=\
-	src/act.c\
-	src/add.c\
-	src/del.c\
-	src/fetch.c\
-	src/info.c
-
 LIBPKGSRC=\
 	lib/pkg/db.c\
 	lib/pkg/download.c\
@@ -40,17 +33,15 @@ LIBFETCHSRC=\
 	lib/fetch/http.c
 
 # LIB PATH
-LIBBIN=   src/libbin.a
 LIBPKG=   lib/libpkg.a
 LIBFETCH= lib/libfetch.a
 
 # LIB OBJS
-LIBBINOBJ=   $(LIBBINSRC:.c=.o)
 LIBPKGOBJ=   $(LIBPKGSRC:.c=.o)
 LIBFETCHOBJ= $(LIBFETCHSRC:.c=.o)
 
 # ALL
-LIB= $(LIBBIN)  $(LIBPKG)    $(LIBFETCH)
+LIB= $(LIBPKG)  $(LIBFETCH)
 OBJ= $(BIN:=.o) $(LIBBINOBJ) $(LIBPKGOBJ) $(LIBFETCHOBJ)
 SRC= $(BIN:=.c)
 
@@ -75,10 +66,6 @@ lib/fetch/httperr.h: lib/fetch/http.errors
 	lib/fetch/errlist.sh http_errlist HTTP lib/fetch/http.errors > $@
 
 # LIBRARIES RULES
-$(LIBBIN): $(LIBBINOBJ)
-	$(AR) rc $@ $?
-	$(RANLIB) $@
-
 $(LIBFETCH): $(LIBFETCHOBJ)
 	$(AR) rc $@ $?
 	$(RANLIB) $@

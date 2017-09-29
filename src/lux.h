@@ -18,11 +18,7 @@
 #define PKG_FMT ".tar.gz"
 #define PKG_SIG ".sig"
 
-int add(Package *pkg, const char *);
-int del(Package *pkg, const char *);
-int fetch(Package *pkg);
-int info(Package *pkg);
-
-int warn_open_db(Package **, const char *);
-int warn_mv(const char *, const char *);
-int warn_rm(const char *);
+static int add(Package *pkg, const char *);
+static int del(Package *pkg, const char *);
+static int fetch(Package *pkg);
+static int info(Package *pkg);
