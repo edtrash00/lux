@@ -11,6 +11,7 @@
 #include "fetch.h"
 #include "lux.h"
 
+#define FMT  PKG_FMT
 #define FLEN 512
 #define ULEN 800
 
@@ -21,7 +22,34 @@ enum Fn {
 	INFO  = 3
 };
 
-static const char *fmt = PKG_FMT;
+static int
+emove(const char *src, const char *dest)
+{
+	char buf[PATH_MAX];
+
+	if (*dest == '/')
+		snprintf(buf, sizeof(buf), "%s%s", dest, src);
+	else
+		snprintf(buf, sizeof(buf), "%s/%s", dest, src);
+
+	if (move(src, buf) < 0) {
+		warn("move %s -> %s", src, buf);
+		return 1;
+	}
+
+	return 0;
+}
+
+static int
+eremove(const char *path)
+{
+	if (remove(path) < 0) {
+		warn("remove %s", path);
+		return 1;
+	}
+
+	return 0;
+}
 
 static int
 add(Package *pkg)
@@ -30,9 +58,9 @@ add(Package *pkg)
 	struct node *np;
 
 	for (np = pkg->dirs; np; np = np->next)
-		rval |= move(np->data, PKG_DIR);
+		rval |= emove(np->data, PKG_DIR);
 	for (np = pkg->files; np; np = np->next)
-		rval |= move(np->data, PKG_DIR);
+		rval |= emove(np->data, PKG_DIR);
 
 	return rval;
 }
@@ -44,9 +72,9 @@ del(Package *pkg)
 	struct node *np;
 
 	for (np = pkg->files; np; np = np->next)
-		rval |= remove(np->data);
+		rval |= eremove(np->data);
 	for (np = pkg->dirs; np; np = np->next)
-		rval |= remove(np->data);
+		rval |= eremove(np->data);
 
 	return rval;
 }
@@ -73,7 +101,7 @@ fetch(Package *pkg)
 
 	buf[bsize-1] = '\0'; /* remove trailing newline */
 
-	snprintf(file, sizeof(file), "%s-%s%s", pkg->name, pkg->version, fmt);
+	snprintf(file, sizeof(file), "%s-%s%s", pkg->name, pkg->version, FMT);
 	snprintf(url, sizeof(url), "%s/%s", buf, file);
 	snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
 
