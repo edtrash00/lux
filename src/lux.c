@@ -24,7 +24,7 @@ enum Fn {
 static const char *fmt = PKG_FMT;
 
 static int
-add(Package *pkg, const char *path)
+add(Package *pkg)
 {
 	int rval = 0;
 	struct node *np;
@@ -38,7 +38,7 @@ add(Package *pkg, const char *path)
 }
 
 static int
-del(Package *pkg, const char *path)
+del(Package *pkg)
 {
 	int rval = 0;
 	struct node *np;
@@ -137,7 +137,7 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	int fn, rval = 0;
+	int (*fn)(Package *), rval = 0;
 	Package *pkg;
 
 	setprogname(argv[0]);
@@ -147,17 +147,17 @@ main(int argc, char *argv[])
 		usage();
 
 	if (!strcmp(*argv, "add"))
-		fn = ADD;
+		fn = add;
 	else if (!strcmp(*argv, "del"))
-		fn = DEL;
+		fn = del;
 	else if (!strcmp(*argv, "fetch"))
-		fn = FETCH;
+		fn = fetch;
 	else if (!strcmp(*argv, "info"))
-		fn = INFO;
+		fn = info;
 	else
 		usage();
 
-	argc--, argv++; 
+	argc--, argv++;
 
 	for (; *argv; argc--, argv++) {
 		if (!(pkg = open_db(*argv))) {
@@ -167,22 +167,7 @@ main(int argc, char *argv[])
 			warn("open_db %s", *argv);
 			continue;
 		}
-
-		switch (fn) {
-		case ADD:
-			rval |= add(pkg, *argv);
-			break;
-		case DEL:
-			rval |= del(pkg, *argv);
-			break;
-		case FETCH:
-			rval |= fetch(pkg);
-			break;
-		case INFO:
-			rval |= info(pkg);
-			break;
-		}
-
+		rval |= fn(pkg);
 		close_db(pkg);
 	}
 

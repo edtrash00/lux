@@ -17,8 +17,3 @@
 #define PKG_TMP "/tmp"
 #define PKG_FMT ".tar.gz"
 #define PKG_SIG ".sig"
-
-static int add(Package *pkg, const char *);
-static int del(Package *pkg, const char *);
-static int fetch(Package *pkg);
-static int info(Package *pkg);
