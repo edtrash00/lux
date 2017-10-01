@@ -1,0 +1,74 @@
+#include <err.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <stdio.h>
+#include <unistd.h>
+
+#include "fetch.h"
+#include "lux.h"
+
+#define FMT  PKG_FMT
+#define FLEN 512
+#define ULEN 800
+
+static int
+fetch(Package *pkg)
+{
+	char file[FLEN], buf[ULEN], url[PATH_MAX], tmp[PATH_MAX];
+	int fd = -1, rval = 0;
+	ssize_t readcnt, bsize = 0;
+
+	if ((fd = open(PKG_SRC, O_RDONLY, 0)) < 0) {
+		warn("open %s", PKG_SRC);
+		goto failure;
+	}
+
+	while ((readcnt = read(fd, buf, sizeof(buf))) > 0)
+		bsize += readcnt;
+
+	if (readcnt < 0) {
+		warn("read %s", PKG_SRC);
+		goto failure;
+	}
+
+	buf[bsize-1] = '\0'; /* remove trailing newline */
+
+	snprintf(file, sizeof(file), "%s-%s%s", pkg->name, pkg->version, FMT);
+	snprintf(url, sizeof(url), "%s/%s", buf, file);
+	snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
+
+	if (download(url, tmp, NULL) < 0) {
+		if (fetchLastErrString)
+			warnx("download %s: %s", url, fetchLastErrString);
+		else
+			warn("download %s", tmp);
+		goto failure;
+	}
+
+	goto done;
+failure:
+	rval = 1;
+done:
+	if (fd != -1)
+		close(fd);
+
+	return rval;
+}
+
+int
+fetch_main(int argc, char *argv[])
+{
+	int rval = 0;
+	Package *pkg;
+
+	for (; *argv; argc--, argv++) {
+		if (eopen_db(*argv, &pkg)) {
+			rval = 1;
+			continue;
+		}
+		rval |= fetch(pkg);
+		close_db(pkg);
+	}
+
+	return rval;
+}

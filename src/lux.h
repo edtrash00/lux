@@ -14,6 +14,14 @@
 #define PKG_LDB "/var/pkg/local"
 #define PKG_RDB "/var/pkg/remote"
 #define PKG_SRC "/var/pkg/source.list"
-#define PKG_TMP "/tmp"
+#define PKG_TMP "/var/pkg/cache"
 #define PKG_FMT ".tar.gz"
 #define PKG_SIG ".sig"
+
+int add_main(int, char *[]);
+int del_main(int, char *[]);
+int fetch_main(int, char *[]);
+int info_main(int, char *[]);
+
+int eopen_db(const char *, Package **);
+void usage(void);
