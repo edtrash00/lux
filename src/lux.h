@@ -18,10 +18,10 @@
 #define PKG_FMT ".tar.gz"
 #define PKG_SIG ".sig"
 
-int add_main(int, char *[]);
-int del_main(int, char *[]);
-int fetch_main(int, char *[]);
-int info_main(int, char *[]);
+int add_main(int, char **);
+int del_main(int, char **);
+int fetch_main(int, char **);
+int info_main(int, char **);
 
 int eopen_db(const char *, Package **);
 void usage(void);

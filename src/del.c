@@ -1,5 +1,4 @@
 #include <err.h>
-#include <stdio.h>
 
 #include "lux.h"
 

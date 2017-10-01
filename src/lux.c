@@ -8,13 +8,6 @@
 
 #include "lux.h"
 
-enum Fn {
-	ADD   = 0,
-	DEL   = 1,
-	FETCH = 2,
-	INFO  = 3
-};
-
 int
 eopen_db(const char *path, Package **pkg)
 {
@@ -43,7 +36,7 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	int (*fn)(int, char *[]), rval = 0;
+	int (*fn)(int, char **), rval = 0;
 
 	setprogname(argv[0]);
 	argc--, argv++;
