@@ -1,9 +1,8 @@
 #include <err.h>
 #include <stdio.h>
+#include <limits.h>
 
 #include "lux.h"
-
-#define PATH_MAX 4096
 
 static int dflag;
 static int lflag;
