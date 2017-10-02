@@ -62,7 +62,7 @@ info(Package *pkg)
 int
 info_main(int argc, char *argv[])
 {
-	int rval = 0;
+	int type = LOCAL, rval = 0;
 	Package *pkg;
 
 	ARGBEGIN {
@@ -75,12 +75,15 @@ info_main(int argc, char *argv[])
 	case 'r':
 		rflag = 1;
 		break;
+	case 'R':
+		type = REMOTE;
+		break;
 	default:
 		usage();
 	} ARGEND
 
 	for (; *argv; argc--, argv++) {
-		if (db_eopen(*argv, &pkg)) {
+		if (db_eopen(type, *argv, &pkg)) {
 			rval = 1;
 			continue;
 		}

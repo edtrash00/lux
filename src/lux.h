@@ -18,10 +18,16 @@
 #define PKG_FMT ".tar.gz"
 #define PKG_SIG ".sig"
 
+enum RType {
+	LOCAL,
+	REMOTE,
+	NONE
+};
+
 int add_main(int, char **);
 int del_main(int, char **);
 int fetch_main(int, char **);
 int info_main(int, char **);
 
-int db_eopen(const char *, Package **);
+int db_eopen(int, const char *, Package **);
 void usage(void);

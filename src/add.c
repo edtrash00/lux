@@ -51,8 +51,10 @@ add_main(int argc, char *argv[])
 	int rval = 0;
 	Package *pkg;
 
+	argc--, argv++; /* remove comand string */
+
 	for (; *argv; argc--, argv++) {
-		if (db_eopen(*argv, &pkg)) {
+		if (db_eopen(REMOTE, *argv, &pkg)) {
 			rval = 1;
 			continue;
 		}
