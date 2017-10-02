@@ -36,7 +36,7 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	int (*fn)(int, char **), rval = 0;
+	int (*fn)(int, char **) = NULL;
 
 	setprogname(argv[0]);
 	argc--, argv++;
@@ -55,8 +55,5 @@ main(int argc, char *argv[])
 	else
 		usage();
 
-	argc--, argv++;
-	rval = fn(argc, argv);
-
-	return rval;
+	exit(fn(argc, argv));
 }
