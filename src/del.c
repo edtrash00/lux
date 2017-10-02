@@ -1,12 +1,21 @@
 #include <err.h>
+#include <stdio.h>
+#include <limits.h>
 
 #include "lux.h"
 
 static int
-eremove(const char *path)
+rmfromsys(const char *path)
 {
-	if (remove(path) < 0) {
-		warn("remove %s", path);
+	char buf[PATH_MAX];
+
+	if (*PKG_DIR == '/')
+		snprintf(buf, sizeof(buf), "%s%s", PKG_DIR, path);
+	else
+		snprintf(buf, sizeof(buf), "%s/%s", PKG_DIR, path);
+
+	if (remove(buf) < 0) {
+		warn("remove %s", buf);
 		return 1;
 	}
 
@@ -16,13 +25,21 @@ eremove(const char *path)
 static int
 del(Package *pkg)
 {
+	char lp[PATH_MAX];
 	int rval = 0;
 	struct node *np;
 
+	snprintf(lp, sizeof(lp), "%s/%s", PKG_LDB, pkg->name);
+
 	for (np = pkg->files; np; np = np->next)
-		rval |= eremove(np->data);
+		rval |= rmfromsys(np->data);
 	for (np = pkg->dirs; np; np = np->next)
-		rval |= eremove(np->data);
+		rval |= rmfromsys(np->data);
+
+	if (remove(lp) < 0) {
+		warn("remove %s", lp);
+		return 1;
+	}
 
 	return rval;
 }

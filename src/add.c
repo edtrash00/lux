@@ -5,17 +5,17 @@
 #include "lux.h"
 
 static int
-emove(const char *src, const char *dest)
+mvtosys(const char *path)
 {
 	char buf[PATH_MAX];
 
-	if (*dest == '/')
-		snprintf(buf, sizeof(buf), "%s%s", dest, src);
+	if (*PKG_DIR == '/')
+		snprintf(buf, sizeof(buf), "%s%s", PKG_DIR, path);
 	else
-		snprintf(buf, sizeof(buf), "%s/%s", dest, src);
+		snprintf(buf, sizeof(buf), "%s/%s", PKG_DIR, path);
 
-	if (move(src, buf) < 0) {
-		warn("move %s -> %s", src, buf);
+	if (move(path, buf) < 0) {
+		warn("move %s -> %s", path, buf);
 		return 1;
 	}
 
@@ -25,13 +25,22 @@ emove(const char *src, const char *dest)
 static int
 add(Package *pkg)
 {
+	char lp[PATH_MAX], rp[PATH_MAX];
 	int rval = 0;
 	struct node *np;
 
+	snprintf(lp, sizeof(lp), "%s/%s", PKG_LDB, pkg->name);
+	snprintf(rp, sizeof(rp), "%s/%s", PKG_RDB, pkg->name);
+
 	for (np = pkg->dirs; np; np = np->next)
-		rval |= emove(np->data, PKG_DIR);
+		rval |= mvtosys(np->data);
 	for (np = pkg->files; np; np = np->next)
-		rval |= emove(np->data, PKG_DIR);
+		rval |= mvtosys(np->data);
+
+	if (copy(rp, lp) < 0) {
+		warn("copy %s -> %s", rp, lp);
+		return 1;
+	}
 
 	return rval;
 }

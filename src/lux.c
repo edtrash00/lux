@@ -2,6 +2,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,10 +12,14 @@
 int
 db_eopen(const char *path, Package **pkg)
 {
-	if (!(*pkg = db_open(path))) {
+	char buf[PATH_MAX];
+
+	snprintf(buf, sizeof(buf), "%s/%s", PKG_RDB, path);
+
+	if (!(*pkg = db_open(buf))) {
 		if (errno == ENOMEM)
 			err(1, NULL);
-		warn("open_db %s", path);
+		warn("open_db %s", buf);
 		return 1;
 	}
 
