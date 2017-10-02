@@ -23,5 +23,5 @@ int del_main(int, char **);
 int fetch_main(int, char **);
 int info_main(int, char **);
 
-int eopen_db(const char *, Package **);
+int db_eopen(const char *, Package **);
 void usage(void);

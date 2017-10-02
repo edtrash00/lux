@@ -9,9 +9,9 @@
 #include "lux.h"
 
 int
-eopen_db(const char *path, Package **pkg)
+db_eopen(const char *path, Package **pkg)
 {
-	if (!(*pkg = open_db(path))) {
+	if (!(*pkg = db_open(path))) {
 		if (errno == ENOMEM)
 			err(1, NULL);
 		warn("open_db %s", path);

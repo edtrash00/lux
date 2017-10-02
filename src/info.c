@@ -80,12 +80,12 @@ info_main(int argc, char *argv[])
 	} ARGEND
 
 	for (; *argv; argc--, argv++) {
-		if (eopen_db(*argv, &pkg)) {
+		if (db_eopen(*argv, &pkg)) {
 			rval = 1;
 			continue;
 		}
 		rval |= info(pkg);
-		close_db(pkg);
+		db_close(pkg);
 	}
 
 	return rval;

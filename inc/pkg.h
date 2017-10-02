@@ -15,8 +15,8 @@ typedef struct {
 } Package;
 
 /* db.c */
-Package * open_db(const char *);
-void close_db(Package *);
+Package * db_open(const char *);
+void db_close(Package *);
 
 /* download.c */
 int download(char *, const char *, const char *);

@@ -34,12 +34,12 @@ del_main(int argc, char *argv[])
 	Package *pkg;
 
 	for (; *argv; argc--, argv++) {
-		if (eopen_db(*argv, &pkg)) {
+		if (db_eopen(*argv, &pkg)) {
 			rval = 1;
 			continue;
 		}
 		rval |= del(pkg);
-		close_db(pkg);
+		db_close(pkg);
 	}
 
 	return rval;

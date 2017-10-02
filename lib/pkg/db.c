@@ -20,7 +20,7 @@ enum Type {
 };
 
 Package *
-open_db(const char *file)
+db_open(const char *file)
 {
 	char **sp, *buf = NULL;
 	FILE *fp;
@@ -84,7 +84,7 @@ open_db(const char *file)
 
 	goto done;
 err:
-	close_db(pkg);
+	db_close(pkg);
 failure:
 	pkg = NULL;
 done:
@@ -97,7 +97,7 @@ done:
 }
 
 void
-close_db(Package *pkg) {
+db_close(Package *pkg) {
 	free(pkg->name);
 	free(pkg->version);
 	free(pkg->license);
