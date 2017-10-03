@@ -40,10 +40,10 @@ void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s add          package ...\n"
-	    "       %s del          package ...\n"
-	    "       %s fetch        package ...\n"
-	    "       %s info  [-dlr] package ...\n",
+	    "usage: %s add   [-L] package ...\n"
+	    "       %s del   package ...\n"
+	    "       %s fetch package ...\n"
+	    "       %s info  [-dlrR] package ...\n",
 	    getprogname(), getprogname(), getprogname(), getprogname());
 	exit(1);
 }

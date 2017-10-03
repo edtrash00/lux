@@ -48,14 +48,20 @@ add(Package *pkg)
 int
 add_main(int argc, char *argv[])
 {
-	int rval = 0;
+	int type = REMOTE, rval = 0;
 	Package *pkg;
 
-	argc--, argv++; /* remove comand string */
+	ARGBEGIN {
+	case 'L':
+		type = NONE;
+		break;
+	default:
+		usage();
+	} ARGEND
 
 	for (; *argv; argc--, argv++) {
-		if (db_eopen(REMOTE, *argv, &pkg)) {
-			rval = 1;
+		if (db_eopen(type, *argv, &pkg)) {
+			rval = 1;\
 			continue;
 		}
 		rval |= add(pkg);
