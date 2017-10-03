@@ -4,9 +4,11 @@
 
 #include "lux.h"
 
-static int dflag;
-static int lflag;
-static int rflag;
+enum Flags {
+	DESC = 0x1, /* description */
+	LIST = 0x2, /* list files */
+	DEPS = 0x4  /* list deps  */
+};
 
 static void
 print_node(const char prefix, struct node *np)
@@ -32,9 +34,9 @@ print_node(const char prefix, struct node *np)
 }
 
 static int
-info(Package *pkg)
+info(Package *pkg, int opts)
 {
-	if (dflag || (!dflag && !lflag && !rflag))
+	if (opts & DESC || !opts)
 		printf(
 		    "Name:        %s\n"
 		    "Version:     %s\n"
@@ -42,15 +44,15 @@ info(Package *pkg)
 		    "Description: %s\n",
 		    pkg->name, pkg->version, pkg->license, pkg->description);
 
-	if (rflag) {
-		if (dflag)
+	if (opts & DEPS) {
+		if (opts & DESC)
 			puts("\nDependencies");
 		print_node('R', pkg->rdeps);
 		print_node('M', pkg->mdeps);
 	}
 
-	if (lflag) {
-		if (dflag)
+	if (opts & LIST) {
+		if (opts & DESC)
 			puts("\nFiles:");
 		print_node('D', pkg->dirs);
 		print_node('F', pkg->files);
@@ -62,18 +64,18 @@ info(Package *pkg)
 int
 info_main(int argc, char *argv[])
 {
-	int type = LOCAL, rval = 0;
+	int opts = 0, type = LOCAL, rval = 0;
 	Package *pkg;
 
 	ARGBEGIN {
 	case 'd':
-		dflag = 1;
+		opts |= DESC;
 		break;
 	case 'l':
-		lflag = 1;
+		opts |= LIST;
 		break;
 	case 'r':
-		rflag = 1;
+		opts |= DEPS;
 		break;
 	case 'R':
 		type = REMOTE;
@@ -87,7 +89,7 @@ info_main(int argc, char *argv[])
 			rval = 1;
 			continue;
 		}
-		rval |= info(pkg);
+		rval |= info(pkg, opts);
 		db_close(pkg);
 	}
 
