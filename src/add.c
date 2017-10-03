@@ -25,22 +25,13 @@ mvtosys(const char *path)
 static int
 add(Package *pkg)
 {
-	char lp[PATH_MAX], rp[PATH_MAX];
 	int rval = 0;
 	struct node *np;
-
-	snprintf(lp, sizeof(lp), "%s/%s", PKG_LDB, pkg->name);
-	snprintf(rp, sizeof(rp), "%s/%s", PKG_RDB, pkg->name);
 
 	for (np = pkg->dirs; np; np = np->next)
 		rval |= mvtosys(np->data);
 	for (np = pkg->files; np; np = np->next)
 		rval |= mvtosys(np->data);
-
-	if (copy(rp, lp) < 0) {
-		warn("copy %s -> %s", rp, lp);
-		return 1;
-	}
 
 	return rval;
 }
