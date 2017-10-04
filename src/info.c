@@ -64,6 +64,7 @@ info(Package *pkg, int opts)
 int
 info_main(int argc, char *argv[])
 {
+	char buf[PATH_MAX];
 	int opts = 0, type = LOCAL, rval = 0;
 	Package *pkg;
 
@@ -85,7 +86,8 @@ info_main(int argc, char *argv[])
 	} ARGEND
 
 	for (; *argv; argc--, argv++) {
-		if (db_eopen(type, *argv, &pkg)) {
+		snprintf(buf, sizeof(buf), "%s/%s", GETDB(type), *argv);
+		if (db_eopen(buf, &pkg)) {
 			rval = 1;
 			continue;
 		}

@@ -39,6 +39,7 @@ add(Package *pkg)
 int
 add_main(int argc, char *argv[])
 {
+	char buf[PATH_MAX];
 	int type = REMOTE, rval = 0;
 	Package *pkg;
 
@@ -51,7 +52,8 @@ add_main(int argc, char *argv[])
 	} ARGEND
 
 	for (; *argv; argc--, argv++) {
-		if (db_eopen(type, *argv, &pkg)) {
+		snprintf(buf, sizeof(buf), "%s/%s", GETDB(type), *argv);
+		if (db_eopen(buf, &pkg)) {
 			rval = 1;\
 			continue;
 		}

@@ -10,26 +10,12 @@
 #include "lux.h"
 
 int
-db_eopen(int type, const char *path, Package **pkg)
+db_eopen(const char *path, Package **pkg)
 {
-	char buf[PATH_MAX];
-
-	switch (type) {
-	case LOCAL:
-		snprintf(buf, sizeof(buf), "%s/%s", PKG_LDB, path);
-		break;
-	case REMOTE:
-		snprintf(buf, sizeof(buf), "%s/%s", PKG_RDB, path);
-		break;
-	case NONE:
-		snprintf(buf, sizeof(buf), "%s", path);
-		break;
-	}
-
-	if (!(*pkg = db_open(buf))) {
+	if (!(*pkg = db_open(path))) {
 		if (errno == ENOMEM)
 			err(1, NULL);
-		warn("open_db %s", buf);
+		warn("open_db %s", path);
 		return 1;
 	}
 

@@ -18,6 +18,9 @@
 #define PKG_FMT ".tar.gz"
 #define PKG_SIG ".sig"
 
+#define GETDB(x) \
+((x) == LOCAL ? PKG_LDB : (x) == REMOTE ? PKG_RDB : (x) == NONE ? "." : NULL)
+
 enum RType {
 	LOCAL,
 	REMOTE,
@@ -29,5 +32,5 @@ int del_main(int, char **);
 int fetch_main(int, char **);
 int info_main(int, char **);
 
-int db_eopen(int, const char *, Package **);
+int db_eopen(const char *, Package **);
 void usage(void);
