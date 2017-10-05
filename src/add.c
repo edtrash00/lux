@@ -39,7 +39,7 @@ add(Package *pkg)
 int
 add_main(int argc, char *argv[])
 {
-	char buf[PATH_MAX];
+	char buf[PATH_MAX], lp[PATH_MAX];
 	int type = REMOTE, rval = 0;
 	Package *pkg;
 
@@ -53,12 +53,19 @@ add_main(int argc, char *argv[])
 
 	for (; *argv; argc--, argv++) {
 		snprintf(buf, sizeof(buf), "%s/%s", GETDB(type), *argv);
+		snprintf(lp, sizeof(lp), "%s/%s", GETDB(LOCAL), *argv);
+
 		if (db_eopen(buf, &pkg)) {
 			rval = 1;\
 			continue;
 		}
 		rval |= add(pkg);
 		db_close(pkg);
+
+		if (copy(buf, lp) < 0) {
+			warn("copy %s -> %s", buf, lp);
+			rval = 1;
+		}
 	}
 
 	return rval;

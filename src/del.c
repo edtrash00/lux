@@ -53,6 +53,11 @@ del_main(int argc, char *argv[])
 		}
 		rval |= del(pkg);
 		db_close(pkg);
+
+		if (remove(buf) < 0) {
+			warn("remove %s", buf);
+			rval = 1;
+		}
 	}
 
 	return rval;
