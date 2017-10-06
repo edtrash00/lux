@@ -8,21 +8,35 @@
 /* number plus colon */
 #define PREFIX (sizeof(char) * 2)
 
-enum Type {
-	Name        = '0',
-	Version     = '1',
-	License     = '2',
-	Description = '3',
-	RDependency = '4',
-	MDependency = '5',
-	Directory   = '6',
-	File        = '7'
-};
+#define Name        6382843298
+#define LongName    249786571779427685
+#define Version     229390708560831
+#define License     229372341555262
+#define Description 13751386334653244867U
+#define LongDesc    249786571779069171
+#define MBSize      6383314208
+#define RDependency 229394969610032
+#define MDependency 7569334749620571
+#define Directory   193404666
+#define File        6382564547
+#define Flag        6382568041
+
+static unsigned long
+hash(char *str)
+{
+	size_t hash = 5381;
+	int c;
+
+	while ((c = *str++))
+		hash = ((hash << 5) + hash) ^ c;
+
+	return hash;
+}
 
 Package *
 db_open(const char *file)
 {
-	char **sp, *buf = NULL;
+	char **sp, *buf = NULL, *p;
 	FILE *fp;
 	Package *pkg;
 	size_t size = 0;
@@ -49,7 +63,15 @@ db_open(const char *file)
 		sp = NULL;
 		np = NULL;
 
-		switch (*buf) {
+		/* ignore blank lines */
+		if (buf == NULL || *buf == '\0')
+			continue;
+
+		for (p = buf; *buf != ':'; buf++)
+			continue;
+		*buf++ = '\0';
+
+		switch (hash(p)) {
 		case Name:
 			sp = &pkg->name;
 			break;
@@ -76,10 +98,14 @@ db_open(const char *file)
 			break;
 		}
 
-		if (sp && !(*sp = strdup(buf + PREFIX)))
+		if (sp && !(*sp = strdup(buf)))
 			goto err;
-		if (np && pushnode(np, addelement(buf + PREFIX)) < 0)
+
+		if (np && pushnode(np, addelement(buf)) < 0)
 			goto err;
+
+		/* return pointer to right place */
+		buf = p;
 	}
 
 	goto done;
