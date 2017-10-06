@@ -11,7 +11,7 @@
 #define License     229372341555262
 #define Description 13751386334653244867U
 #define LongDesc    249786571779069171
-#define MBSize      6383314208
+#define ByteSize    6383314208
 #define RDependency 229394969610032
 #define MDependency 7569334749620571
 #define Directory   193404666
@@ -47,13 +47,16 @@ db_open(const char *file)
 		goto failure;
 
 	pkg->name        = NULL;
+	pkg->longname    = NULL;
 	pkg->version     = NULL;
 	pkg->license     = NULL;
 	pkg->description = NULL;
+	pkg->longdesc    = NULL;
 	pkg->rdeps       = NULL;
 	pkg->mdeps       = NULL;
 	pkg->dirs        = NULL;
 	pkg->files       = NULL;
+	pkg->flags       = NULL;
 
 	while ((len = getline(&buf, &size, fp)) != EOF) {
 		buf[len - 1] = '\0'; /* remove trailing newline */
@@ -72,6 +75,9 @@ db_open(const char *file)
 		case Name:
 			sp = &pkg->name;
 			break;
+		case LongName:
+			sp = &pkg->longname;
+			break;
 		case Version:
 			sp = &pkg->version;
 			break;
@@ -80,6 +86,11 @@ db_open(const char *file)
 			break;
 		case Description:
 			sp = &pkg->description;
+			break;
+		case LongDesc:
+			np = &pkg->longdesc;
+			break;
+		case ByteSize:
 			break;
 		case RDependency:
 			np = &pkg->rdeps;
@@ -92,6 +103,8 @@ db_open(const char *file)
 			break;
 		case File:
 			np = &pkg->files;
+			break;
+		case Flag:
 			break;
 		}
 
@@ -122,10 +135,13 @@ done:
 void
 db_close(Package *pkg) {
 	free(pkg->name);
+	free(pkg->longname);
 	free(pkg->version);
 	free(pkg->license);
 	free(pkg->description);
 
+	while (pkg->longdesc)
+		freenode(popnode(&pkg->longdesc));
 	while (pkg->rdeps)
 		freenode(popnode(&pkg->rdeps));
 	while (pkg->mdeps)

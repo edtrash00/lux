@@ -4,14 +4,18 @@ struct node {
 };
 
 typedef struct {
+	struct node *dirs;
+	struct node *files;
+	struct node *flags;
+	struct node *longdesc;
+	struct node *mdeps;
+	struct node *rdeps;
+	off_t size;
 	char *name;
+	char *longname;
 	char *version;
 	char *license;
 	char *description;
-	struct node *files;
-	struct node *dirs;
-	struct node *mdeps;
-	struct node *rdeps;
 } Package;
 
 /* db.c */
