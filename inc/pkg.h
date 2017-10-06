@@ -1,3 +1,5 @@
+#include <sys/types.h>
+
 struct node {
 	void *data;
 	struct node *next;
