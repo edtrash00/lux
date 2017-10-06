@@ -67,11 +67,11 @@ db_open(const char *file)
 		if (buf == NULL || *buf == '\0')
 			continue;
 
-		for (p = buf; *buf != ':'; buf++)
+		for (p = buf; *p != ':'; p++)
 			continue;
-		*buf++ = '\0';
+		*p++ = '\0';
 
-		switch (hash(p)) {
+		switch (hash(buf)) {
 		case Name:
 			sp = &pkg->name;
 			break;
@@ -108,14 +108,11 @@ db_open(const char *file)
 			break;
 		}
 
-		if (sp && !(*sp = strdup(buf)))
+		if (sp && !(*sp = strdup(p)))
 			goto err;
 
-		if (np && pushnode(np, addelement(buf)) < 0)
+		if (np && pushnode(np, addelement(p)) < 0)
 			goto err;
-
-		/* return pointer to right place */
-		buf = p;
 	}
 
 	goto done;
