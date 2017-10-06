@@ -5,9 +5,6 @@
 
 #include "pkg.h"
 
-/* number plus colon */
-#define PREFIX (sizeof(char) * 2)
-
 #define Name        6382843298
 #define LongName    249786571779427685
 #define Version     229390708560831
