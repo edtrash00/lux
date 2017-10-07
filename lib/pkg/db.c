@@ -5,6 +5,7 @@
 
 #include "pkg.h"
 
+/* hash values */
 #define Name        6382843298
 #define LongName    249786571779427685
 #define Version     229390708560831
@@ -12,6 +13,7 @@
 #define Description 13751386334653244867U
 #define LongDesc    249786571779069171
 #define ByteSize    6383314208
+#define BytePkgSize 229388381659868
 #define RDependency 229394969610032
 #define MDependency 7569334749620571
 #define Directory   193404666
