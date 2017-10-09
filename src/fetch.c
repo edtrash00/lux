@@ -7,14 +7,13 @@
 #include "fetch.h"
 #include "lux.h"
 
-#define FMT  PKG_FMT
-#define FLEN 512
-#define ULEN 800
+#define FMT     PKG_FMT
+#define URL_MAX 800
 
 static int
 fetch(Package *pkg)
 {
-	char file[FLEN], buf[ULEN], url[PATH_MAX], tmp[PATH_MAX];
+	char file[NAME_MAX], buf[URL_MAX], url[PATH_MAX], tmp[PATH_MAX];
 	int fd = -1, rval = 0;
 	ssize_t readcnt, bsize = 0;
 
