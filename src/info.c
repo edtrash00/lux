@@ -9,7 +9,7 @@ enum Flags {
 	HFLAG = 0x02, /* list files */
 	LFLAG = 0x04, /* list run deps  */
 	MFLAG = 0x08, /* list make deps */
-	NFLAG = 0x10, /* emit break line */
+	NFLAG = 0x10, /* emits break line */
 	RFLAG = 0x20  /* human readable output */
 };
 
