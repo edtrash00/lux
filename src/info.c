@@ -16,7 +16,7 @@ enum Flags {
 static int putch;
 
 static void
-pkey(const char *prefix, const char *str, int more)
+pkey(const char *prefix, const char *str)
 {
 	char brk, *pre;
 
@@ -59,10 +59,10 @@ static int
 info(Package *pkg, int opts)
 {
 	if (opts & DFLAG) {
-		pkey(opts & HFLAG ? "Name: " : NULL, pkg->name, 1);
-		pkey(opts & HFLAG ? "Version: " : NULL, pkg->version, 1);
-		pkey(opts & HFLAG ? "License: " : NULL, pkg->license, 1);
-		pkey(opts & HFLAG ? "Description: ": NULL, pkg->description, 0);
+		pkey(opts & HFLAG ? "Name: " : NULL, pkg->name);
+		pkey(opts & HFLAG ? "Version: " : NULL, pkg->version);
+		pkey(opts & HFLAG ? "License: " : NULL, pkg->license);
+		pkey(opts & HFLAG ? "Description: ": NULL, pkg->description);
 	}
 
 	if (opts & RFLAG)
