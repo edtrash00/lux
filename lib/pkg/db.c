@@ -49,6 +49,9 @@ stoll(const char *str, long long min, long long max)
 	if (ll > max || ll < min)
 		errno = ERANGE;
 
+	if (errno)
+		return -1;
+
 	return ll;
 }
 
@@ -137,7 +140,7 @@ db_open(const char *file)
 			break;
 		}
 
-		if (op && !(*op = stoll(p, 0, UINT_MAX)))
+		if (op && (*op = stoll(p, 0, UINT_MAX)) < 0)
 			goto err;
 
 		if (sp && !(*sp = strdup(p)))
