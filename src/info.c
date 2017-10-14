@@ -5,58 +5,79 @@
 #include "lux.h"
 
 enum Flags {
-	DESC = 0x1, /* description */
-	LIST = 0x2, /* list files */
-	DEPS = 0x4  /* list deps  */
+	DFLAG = 0x01, /* description */
+	HFLAG = 0x02, /* list files */
+	LFLAG = 0x04, /* list run deps  */
+	MFLAG = 0x08, /* list make deps */
+	NFLAG = 0x10, /* emit break line */
+	RFLAG = 0x20  /* human readable output */
 };
 
+static int putch;
+
 static void
-print_node(const char prefix, struct node *np)
+pkey(const char *prefix, const char *str, int more)
 {
-	char path[PATH_MAX], *str;
+	char brk, *pre;
+
+	pre = prefix ? (char *)prefix : "";
+	brk = prefix ? '\n' : ' ';
+
+	if (putch++)
+		putchar(brk);
+
+	printf("%s%s", pre, str);
+}
+
+static void
+print_node(const char *prefix, struct node *np, int dep)
+{
+	char path[PATH_MAX];
+	char brk, *pre, *str;
 
 	for (; np; np = np->next) {
 		str = (char *)np->data;
+		pre = prefix ? (char *)prefix : "";
+		brk = prefix ? '\n' : ' ';
 
-		/* dependencies have no path */
-		if (prefix == 'R' || prefix == 'M') {
-			printf("%c: %s\n", prefix, str);
-			return;
-		}
+		if (putch++)
+			putchar(brk);
 
 		if (*PKG_DIR == '/')
 			snprintf(path, sizeof(path), "%s%s", PKG_DIR, str);
 		else
 			snprintf(path, sizeof(path), "%s/%s", PKG_DIR, str);
 
-		printf("%c: %s\n", prefix, path);
+		if (dep)
+			printf("%s%s", pre, str);
+		else
+			printf("%s%s", pre, path);
 	}
 }
 
 static int
 info(Package *pkg, int opts)
 {
-	if (opts & DESC || !opts)
-		printf(
-		    "Name:        %s\n"
-		    "Version:     %s\n"
-		    "License:     %s\n"
-		    "Description: %s\n",
-		    pkg->name, pkg->version, pkg->license, pkg->description);
-
-	if (opts & DEPS) {
-		if (opts & DESC)
-			puts("\nDependencies");
-		print_node('R', pkg->rdeps);
-		print_node('M', pkg->mdeps);
+	if (opts & DFLAG) {
+		pkey(opts & HFLAG ? "Name: " : NULL, pkg->name, 1);
+		pkey(opts & HFLAG ? "Version: " : NULL, pkg->version, 1);
+		pkey(opts & HFLAG ? "License: " : NULL, pkg->license, 1);
+		pkey(opts & HFLAG ? "Description: ": NULL, pkg->description, 0);
 	}
 
-	if (opts & LIST) {
-		if (opts & DESC)
-			puts("\nFiles:");
-		print_node('D', pkg->dirs);
-		print_node('F', pkg->files);
+	if (opts & RFLAG)
+		print_node(opts & HFLAG ? "R: " : NULL, pkg->rdeps, 1);
+	if (opts & MFLAG)
+		print_node(opts & HFLAG ? "M: " : NULL, pkg->mdeps, 1);
+	if (opts & LFLAG) {
+		if (opts & (RFLAG | MFLAG))
+			putchar(opts & HFLAG ? '\n' : ' ');
+		print_node(opts & HFLAG ? "D: " : NULL, pkg->dirs,  0);
+		print_node(opts & HFLAG ? "F: " : NULL, pkg->files, 0);
 	}
+
+	if (-opts & NFLAG)
+		putchar('\n');
 
 	return 0;
 }
@@ -70,13 +91,22 @@ info_main(int argc, char *argv[])
 
 	ARGBEGIN {
 	case 'd':
-		opts |= DESC;
+		opts |= DFLAG;
+		break;
+	case 'h':
+		opts |= HFLAG;
 		break;
 	case 'l':
-		opts |= LIST;
+		opts |= LFLAG;
+		break;
+	case 'm':
+		opts |= MFLAG;
+		break;
+	case 'n':
+		opts |= NFLAG;
 		break;
 	case 'r':
-		opts |= DEPS;
+		opts |= RFLAG;
 		break;
 	case 'R':
 		type = REMOTE;
@@ -84,6 +114,9 @@ info_main(int argc, char *argv[])
 	default:
 		usage();
 	} ARGEND
+
+	if (!opts)
+		opts |= DFLAG|HFLAG;
 
 	for (; *argv; argc--, argv++) {
 		snprintf(buf, sizeof(buf), "%s/%s", GETDB(type), *argv);
