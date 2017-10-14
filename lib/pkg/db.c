@@ -1,4 +1,6 @@
 #include <err.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,11 +34,30 @@ hash(char *str)
 	return hash;
 }
 
+static long long
+stoll(const char *str, long long min, long long max)
+{
+	char *end;
+	long long ll;
+
+	errno = 0;
+	ll = strtoll(str, &end, 10);
+
+	if (end == str || *end != '\0')
+		errno = EINVAL;
+
+	if (ll > max || ll < min)
+		errno = ERANGE;
+
+	return ll;
+}
+
 Package *
 db_open(const char *file)
 {
 	char **sp, *buf = NULL, *p;
 	FILE *fp;
+	off_t *op;
 	Package *pkg;
 	size_t size = 0;
 	ssize_t len;
@@ -64,6 +85,7 @@ db_open(const char *file)
 		buf[len - 1] = '\0'; /* remove trailing newline */
 		sp = NULL;
 		np = NULL;
+		op = NULL;
 
 		/* ignore blank lines */
 		if (buf == NULL || *buf == '\0')
@@ -93,6 +115,10 @@ db_open(const char *file)
 			np = &pkg->longdesc;
 			break;
 		case ByteSize:
+			op = &pkg->size;
+			break;
+		case BytePkgSize:
+			op = &pkg->pkgsize;
 			break;
 		case RDependency:
 			np = &pkg->rdeps;
@@ -107,8 +133,12 @@ db_open(const char *file)
 			np = &pkg->files;
 			break;
 		case Flag:
+			np = &pkg->flags;
 			break;
 		}
+
+		if (op && !(*op = stoll(p, 0, UINT_MAX)))
+			goto err;
 
 		if (sp && !(*sp = strdup(p)))
 			goto err;
