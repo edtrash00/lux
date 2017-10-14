@@ -6,11 +6,11 @@
 
 enum Flags {
 	DFLAG = 0x01, /* description */
-	HFLAG = 0x02, /* list files */
-	LFLAG = 0x04, /* list run deps  */
+	HFLAG = 0x02, /* human readable output */
+	LFLAG = 0x04, /* list files */
 	MFLAG = 0x08, /* list make deps */
 	NFLAG = 0x10, /* emits break line */
-	RFLAG = 0x20  /* human readable output */
+	RFLAG = 0x20  /* list run deps  */
 };
 
 static int putch;
@@ -139,7 +139,7 @@ info_main(int argc, char *argv[])
 	} ARGEND
 
 	if (!opts)
-		opts |= DFLAG|HFLAG;
+		opts = DFLAG|HFLAG;
 
 	for (; *argv; argc--, argv++) {
 		snprintf(buf, sizeof(buf), "%s/%s", GETDB(type), *argv);
