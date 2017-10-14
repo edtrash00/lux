@@ -26,7 +26,7 @@ pkey(const char *prefix, const char *str)
 	if (putch++)
 		putchar(brk);
 
-	printf("%s%s", pre, str);
+	printf("%s%s", pre, (char *)str);
 }
 
 static void
@@ -58,22 +58,45 @@ print_node(const char *prefix, struct node *np, int dep)
 static int
 info(Package *pkg, int opts)
 {
+	const char *name, *version, *license, *description;
+	const char *rdeps, *mdeps, *dirs, *files;
+
+	if (opts & HFLAG) {
+		name        = "Name: ";
+		version     = "Version: ";
+		license     = "License: ";
+		description = "Description: ";
+		rdeps       = "R: ";
+		mdeps       = "M: ";
+		dirs        = "D: ";
+		files       = "F: ";
+	} else {
+		name        = NULL;
+		version     = NULL;
+		license     = NULL;
+		description = NULL;
+		rdeps       = NULL;
+		mdeps       = NULL;
+		dirs        = NULL;
+		files       = NULL;
+	}
+
 	if (opts & DFLAG) {
-		pkey(opts & HFLAG ? "Name: " : NULL, pkg->name);
-		pkey(opts & HFLAG ? "Version: " : NULL, pkg->version);
-		pkey(opts & HFLAG ? "License: " : NULL, pkg->license);
-		pkey(opts & HFLAG ? "Description: ": NULL, pkg->description);
+		pkey(name, pkg->name);
+		pkey(version, pkg->version);
+		pkey(license, pkg->license);
+		pkey(description, pkg->description);
 	}
 
 	if (opts & RFLAG)
-		print_node(opts & HFLAG ? "R: " : NULL, pkg->rdeps, 1);
+		print_node(rdeps, pkg->rdeps, 1);
 	if (opts & MFLAG)
-		print_node(opts & HFLAG ? "M: " : NULL, pkg->mdeps, 1);
+		print_node(mdeps, pkg->mdeps, 1);
 	if (opts & LFLAG) {
 		if (opts & (RFLAG | MFLAG))
 			putchar(opts & HFLAG ? '\n' : ' ');
-		print_node(opts & HFLAG ? "D: " : NULL, pkg->dirs,  0);
-		print_node(opts & HFLAG ? "F: " : NULL, pkg->files, 0);
+		print_node(dirs, pkg->dirs,  0);
+		print_node(files, pkg->files, 0);
 	}
 
 	if (-opts & NFLAG)
