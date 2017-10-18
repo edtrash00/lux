@@ -11,6 +11,7 @@ HDR=\
 	inc/arg.h\
 	inc/compat.h\
 	inc/fetch.h\
+	inc/hash.h\
 	inc/pkg.h\
 	src/lux.h
 
@@ -29,7 +30,8 @@ LIBPKGSRC=\
 	lib/pkg/db.c\
 	lib/pkg/download.c\
 	lib/pkg/fs.c\
-	lib/pkg/node.c
+	lib/pkg/node.c\
+	lib/pkg/util.c
 
 LIBFETCHSRC=\
 	lib/fetch/common.c\

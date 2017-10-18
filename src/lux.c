@@ -2,10 +2,8 @@
 
 #include <err.h>
 #include <errno.h>
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "lux.h"
 
@@ -45,16 +43,22 @@ main(int argc, char *argv[])
 	if (!argc)
 		usage();
 
-	if (!strcmp(*argv, "add"))
+	switch (hash(*argv)) {
+	case ADD:
 		fn = add_main;
-	else if (!strcmp(*argv, "del"))
+		break;
+	case DEL:
 		fn = del_main;
-	else if (!strcmp(*argv, "fetch"))
+		break;
+	case FETCH:
 		fn = fetch_main;
-	else if (!strcmp(*argv, "info"))
+		break;
+	case INFO:
 		fn = info_main;
-	else
+		break;
+	default:
 		usage();
+	}
 
 	exit(fn(argc, argv));
 }

@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include "hash.h"
 
 struct node {
 	void *data;
@@ -38,3 +39,7 @@ struct node * addelement(const void *);
 void freenode(struct node *);
 struct node * popnode(struct node **);
 int pushnode(struct node **, struct node *);
+
+/* util.c */
+unsigned long hash(char *);
+long long stoll(const char *, long long, long long);
