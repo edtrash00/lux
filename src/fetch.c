@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "fetch.h"
@@ -54,6 +55,13 @@ done:
 	return rval;
 }
 
+static void
+usage(void)
+{
+	fprintf(stderr, "usage: %s fetch package ...\n", getprogname());
+	exit(1);
+}
+
 int
 fetch_main(int argc, char *argv[])
 {
@@ -62,6 +70,9 @@ fetch_main(int argc, char *argv[])
 	Package *pkg;
 
 	argc--, argv++; /* remove comand string */
+
+	if (!argc)
+		usage();
 
 	for (; *argv; argc--, argv++) {
 		snprintf(buf, sizeof(buf), "%s/%s", GETDB(REMOTE), *argv);

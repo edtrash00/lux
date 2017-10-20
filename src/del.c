@@ -1,5 +1,6 @@
 #include <err.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <limits.h>
 
 #include "lux.h"
@@ -36,6 +37,13 @@ del(Package *pkg)
 	return rval;
 }
 
+static void
+usage(void)
+{
+	fprintf(stderr, "usage: %s del package ...\n", getprogname());
+	exit(1);
+}
+
 int
 del_main(int argc, char *argv[])
 {
@@ -44,6 +52,9 @@ del_main(int argc, char *argv[])
 	Package *pkg;
 
 	argc--, argv++; /* remove comand string */
+
+	if (!argc)
+		usage();
 
 	for (; *argv; argc--, argv++) {
 		snprintf(buf, sizeof(buf), "%s/%s", GETDB(LOCAL), *argv);

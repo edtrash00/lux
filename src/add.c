@@ -1,5 +1,6 @@
 #include <err.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <limits.h>
 
 #include "lux.h"
@@ -36,6 +37,13 @@ add(Package *pkg)
 	return rval;
 }
 
+static void
+usage(void)
+{
+	fprintf(stderr, "usage: %s add [-L] package ...\n", getprogname());
+	exit(1);
+}
+
 int
 add_main(int argc, char *argv[])
 {
@@ -50,6 +58,9 @@ add_main(int argc, char *argv[])
 	default:
 		usage();
 	} ARGEND
+
+	if (!argc)
+		usage();
 
 	for (; *argv; argc--, argv++) {
 		snprintf(buf, sizeof(buf), "%s/%s", GETDB(type), *argv);

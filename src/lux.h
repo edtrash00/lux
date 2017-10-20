@@ -33,4 +33,3 @@ int fetch_main(int, char **);
 int info_main(int, char **);
 
 int db_eopen(const char *, Package **);
-void usage(void);

@@ -1,5 +1,6 @@
 #include <err.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <limits.h>
 
 #include "lux.h"
@@ -16,21 +17,7 @@ enum Flags {
 static int putch;
 
 static void
-pkey(const char *prefix, const char *str)
-{
-	char brk, *pre;
-
-	pre = prefix ? (char *)prefix : "";
-	brk = prefix ? '\n' : ' ';
-
-	if (putch++)
-		putchar(brk);
-
-	printf("%s%s", pre, (char *)str);
-}
-
-static void
-print_node(const char *prefix, struct node *np, int dep)
+print_node(const char *prefix, struct node *np, int nopath)
 {
 	char path[PATH_MAX];
 	char brk, *pre, *str;
@@ -48,44 +35,39 @@ print_node(const char *prefix, struct node *np, int dep)
 		else
 			snprintf(path, sizeof(path), "%s/%s", PKG_DIR, str);
 
-		if (dep)
+		if (nopath)
 			printf("%s%s", pre, str);
 		else
 			printf("%s%s", pre, path);
 	}
 }
 
-static int
-info(Package *pkg, int opts)
+static void
+getinfo(Package *pkg, int opts)
 {
-	const char *name, *version, *license, *description;
+	printf(
+	    "Name:        %s\n"
+	    "Version:     %s\n"
+	    "License:     %s\n"
+	    "Description: %s\n",
+	    pkg->name, pkg->version, pkg->license, pkg->description);
+}
+
+static void
+getargs(Package *pkg, int opts)
+{
 	const char *rdeps, *mdeps, *dirs, *files;
 
 	if (opts & HFLAG) {
-		name        = "Name: ";
-		version     = "Version: ";
-		license     = "License: ";
-		description = "Description: ";
 		rdeps       = "R: ";
 		mdeps       = "M: ";
 		dirs        = "D: ";
 		files       = "F: ";
 	} else {
-		name        = NULL;
-		version     = NULL;
-		license     = NULL;
-		description = NULL;
 		rdeps       = NULL;
 		mdeps       = NULL;
 		dirs        = NULL;
 		files       = NULL;
-	}
-
-	if (opts & DFLAG) {
-		pkey(name, pkg->name);
-		pkey(version, pkg->version);
-		pkey(license, pkg->license);
-		pkey(description, pkg->description);
 	}
 
 	if (opts & RFLAG)
@@ -93,16 +75,22 @@ info(Package *pkg, int opts)
 	if (opts & MFLAG)
 		print_node(mdeps, pkg->mdeps, 1);
 	if (opts & LFLAG) {
-		if (opts & (RFLAG | MFLAG))
-			putchar(opts & HFLAG ? '\n' : ' ');
 		print_node(dirs, pkg->dirs,  0);
 		print_node(files, pkg->files, 0);
 	}
 
 	if (-opts & NFLAG)
 		putchar('\n');
+}
 
-	return 0;
+static void
+usage(void)
+{
+	fprintf(stderr,
+	    "usage: %s info [-Rd] package ...\n"
+	    "       %s info [-Rh] [-lmnr] package ...\n",
+	    getprogname(), getprogname());
+	exit(1);
 }
 
 int
@@ -138,8 +126,10 @@ info_main(int argc, char *argv[])
 		usage();
 	} ARGEND
 
+	if (!argc)
+		usage();
 	if (!opts)
-		opts = DFLAG|HFLAG;
+		opts = DFLAG;
 
 	for (; *argv; argc--, argv++) {
 		snprintf(buf, sizeof(buf), "%s/%s", GETDB(type), *argv);
@@ -147,7 +137,10 @@ info_main(int argc, char *argv[])
 			rval = 1;
 			continue;
 		}
-		rval |= info(pkg, opts);
+		if (opts & DFLAG)
+			getinfo(pkg, opts);
+		else
+			getargs(pkg, opts);
 		db_close(pkg);
 	}
 

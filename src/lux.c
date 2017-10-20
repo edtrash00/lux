@@ -20,15 +20,10 @@ db_eopen(const char *path, Package **pkg)
 	return 0;
 }
 
-void
+static void
 usage(void)
 {
-	fprintf(stderr,
-	    "usage: %s add   [-L] package ...\n"
-	    "       %s del   package ...\n"
-	    "       %s fetch package ...\n"
-	    "       %s info  [-dlrR] package ...\n",
-	    getprogname(), getprogname(), getprogname(), getprogname());
+	fprintf(stderr, "usage: %s add|del|fetch|info [args] ...\n", getprogname());
 	exit(1);
 }
 
