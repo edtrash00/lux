@@ -46,7 +46,7 @@ info(Package *pkg, int opts)
 	    "Version:     %s\n"
 	    "License:     %s\n"
 	    "Description: %s\n",
-	    pkg->name, pkg->version, pkg->license, pkg->description);
+	    pkg->longname, pkg->version, pkg->license, pkg->description);
 
 	if (opts & RFLAG) {
 		print_node("R: ", pkg->rdeps, 1);
