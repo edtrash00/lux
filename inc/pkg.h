@@ -1,5 +1,4 @@
 #include <sys/types.h>
-#include "hash.h"
 
 struct node {
 	void *data;

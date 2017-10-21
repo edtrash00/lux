@@ -7,6 +7,11 @@
 
 #include "lux.h"
 
+#define ADD   193409604
+#define DEL   193404520
+#define FETCH 210624503705
+#define INFO  6382793707
+
 int
 db_eopen(const char *path, Package **pkg)
 {

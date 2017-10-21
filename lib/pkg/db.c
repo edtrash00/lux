@@ -5,6 +5,19 @@
 
 #include "pkg.h"
 
+#define NAME        6382843298            /* name        */
+#define LONGNAME    249786571779427685    /* long-name   */
+#define VERSION     229390708560831       /* version     */
+#define LICENSE     229372341555262       /* license     */
+#define DESCRIPTION 13751386334653244867U /* description */
+#define SIZE        6383314208            /* size        */
+#define PKGSIZE     229388381659868       /* pkgsize     */
+#define RUNDEP      229394969610032       /* run-dep     */
+#define MAKEDEP     7569334749620571      /* make-dep    */
+#define DIRECTORY   193404666             /* dir         */
+#define AFILE       6382564547            /* file        */
+#define FLAG        6382568041            /* flag        */
+
 Package *
 db_open(const char *file)
 {
@@ -49,43 +62,40 @@ db_open(const char *file)
 		*p++ = '\0';
 
 		switch (hash(buf)) {
-		case Name:
+		case NAME:
 			sp = &pkg->name;
 			break;
-		case LongName:
+		case LONGNAME:
 			sp = &pkg->longname;
 			break;
-		case Version:
+		case VERSION:
 			sp = &pkg->version;
 			break;
-		case License:
+		case LICENSE:
 			sp = &pkg->license;
 			break;
-		case Description:
+		case DESCRIPTION:
 			sp = &pkg->description;
 			break;
-		case LongDesc:
-			np = &pkg->longdesc;
-			break;
-		case ByteSize:
+		case SIZE:
 			op = &pkg->size;
 			break;
-		case BytePkgSize:
+		case PKGSIZE:
 			op = &pkg->pkgsize;
 			break;
-		case RDependency:
+		case RUNDEP:
 			np = &pkg->rdeps;
 			break;
-		case MDependency:
+		case MAKEDEP:
 			np = &pkg->mdeps;
 			break;
-		case Directory:
+		case DIRECTORY:
 			np = &pkg->dirs;
 			break;
-		case File:
+		case AFILE:
 			np = &pkg->files;
 			break;
-		case Flag:
+		case FLAG:
 			np = &pkg->flags;
 			break;
 		}

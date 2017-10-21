@@ -11,7 +11,6 @@ HDR=\
 	inc/arg.h\
 	inc/compat.h\
 	inc/fetch.h\
-	inc/hash.h\
 	inc/pkg.h\
 	src/lux.h
 
