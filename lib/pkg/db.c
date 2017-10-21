@@ -40,7 +40,6 @@ db_open(const char *file)
 	pkg->version     = NULL;
 	pkg->license     = NULL;
 	pkg->description = NULL;
-	pkg->longdesc    = NULL;
 	pkg->rdeps       = NULL;
 	pkg->mdeps       = NULL;
 	pkg->dirs        = NULL;
@@ -132,8 +131,6 @@ db_close(Package *pkg) {
 	free(pkg->license);
 	free(pkg->description);
 
-	while (pkg->longdesc)
-		freenode(popnode(&pkg->longdesc));
 	while (pkg->rdeps)
 		freenode(popnode(&pkg->rdeps));
 	while (pkg->mdeps)

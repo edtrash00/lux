@@ -9,7 +9,6 @@ typedef struct {
 	struct node *dirs;
 	struct node *files;
 	struct node *flags;
-	struct node *longdesc;
 	struct node *mdeps;
 	struct node *rdeps;
 	off_t size;
