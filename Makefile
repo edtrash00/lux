@@ -11,8 +11,7 @@ HDR=\
 	inc/arg.h\
 	inc/compat.h\
 	inc/fetch.h\
-	inc/pkg.h\
-	src/lux.h
+	inc/pkg.h
 
 # SOURCE
 BIN=\

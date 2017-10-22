@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <limits.h>
 
-#include "lux.h"
+#include "pkg.h"
 
 static int
 mvtosys(const char *path)

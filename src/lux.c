@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "lux.h"
+#include "pkg.h"
 
 #define ADD   193409604
 #define DEL   193404520

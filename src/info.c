@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <limits.h>
 
-#include "lux.h"
+#include "pkg.h"
 
 enum Flags {
 	LFLAG = 0x04, /* list files */

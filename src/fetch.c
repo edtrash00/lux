@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 #include "fetch.h"
-#include "lux.h"
+#include "pkg.h"
 
 #define FMT     PKG_FMT
 #define URL_MAX 800

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <limits.h>
 
-#include "lux.h"
+#include "pkg.h"
 
 static int
 rmfromsys(const char *path)
