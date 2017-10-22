@@ -9,7 +9,7 @@
 #include "pkg.h"
 
 #define FMT     PKG_FMT
-#define URL_MAX 800
+#define URL_MAX (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
 
 static int
 fetch(Package *pkg)
@@ -37,8 +37,9 @@ fetch(Package *pkg)
 	snprintf(url, sizeof(url), "%s/%s", buf, file);
 	snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
 
+	fetchLastErrCode = 0;
 	if (download(url, tmp, NULL) < 0) {
-		if (fetchLastErrString)
+		if (fetchLastErrCode)
 			warnx("download %s: %s", url, fetchLastErrString);
 		else
 			warn("download %s", tmp);
