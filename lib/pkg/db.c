@@ -139,6 +139,8 @@ db_close(Package *pkg) {
 		freenode(popnode(&pkg->dirs));
 	while (pkg->files)
 		freenode(popnode(&pkg->files));
+	while (pkg->flags)
+		freenode(popnode(&pkg->flags));
 
 	free(pkg);
 }
