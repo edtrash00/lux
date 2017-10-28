@@ -191,15 +191,19 @@ fetch_stat_file(int fd, struct url_stat *us)
 {
 	struct stat sb;
 
-	us->size = -1;
-	us->atime = us->mtime = 0;
+	if (us) {
+		us->size = -1;
+		us->atime = us->mtime = 0;
+	}
 	if (fstat(fd, &sb) == -1) {
 		fetch_syserr();
 		return (-1);
 	}
-	us->size = sb.st_size;
-	us->atime = sb.st_atime;
-	us->mtime = sb.st_mtime;
+	if (us) {
+		us->size = sb.st_size;
+		us->atime = sb.st_atime;
+		us->mtime = sb.st_mtime;
+	}
 	return (0);
 }
 
@@ -240,7 +244,7 @@ fetchListFile(struct url_list *ue, struct url *u, const char *pattern, const cha
 		fetch_syserr();
 		return -1;
 	}
-		
+
 	dir = opendir(path);
 	free(path);
 
