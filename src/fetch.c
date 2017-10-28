@@ -15,24 +15,9 @@ static int
 fetch(Package *pkg)
 {
 	char file[NAME_MAX], buf[URL_MAX], url[PATH_MAX], tmp[PATH_MAX];
-	int fd = -1, rval = 0;
-	ssize_t readcnt, bsize = 0;
+	int rval = 0;
 
-	if ((fd = open(PKG_SRC, O_RDONLY, 0)) < 0) {
-		warn("open %s", PKG_SRC);
-		goto failure;
-	}
-
-	while ((readcnt = read(fd, buf, sizeof(buf))) > 0)
-		bsize += readcnt;
-
-	if (readcnt < 0) {
-		warn("read %s", PKG_SRC);
-		goto failure;
-	}
-
-	buf[bsize-1] = '\0'; /* remove trailing newline */
-
+	snprintf(buf, sizeof(buf), "%s", PKG_SRC);
 	snprintf(file, sizeof(file), "%s-%s%s", pkg->name, pkg->version, FMT);
 	snprintf(url, sizeof(url), "%s/%s", buf, file);
 	snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
@@ -50,9 +35,6 @@ fetch(Package *pkg)
 failure:
 	rval = 1;
 done:
-	if (fd != -1)
-		close(fd);
-
 	return rval;
 }
 

@@ -53,7 +53,7 @@ db_open(const char *file)
 		op = NULL;
 
 		/* ignore blank lines */
-		if (buf == NULL || *buf == '\0')
+		if (*buf == '\0')
 			continue;
 
 		for (p = buf; *p != ':'; p++)

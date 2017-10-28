@@ -252,18 +252,24 @@ int
 fetch_bind(int sd, int af, const char *addr)
 {
 	struct addrinfo hints, *res, *res0;
+	int rval = 0;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = af;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = 0;
 	if (getaddrinfo(addr, NULL, &hints, &res0))
-		return (-1);
+		goto fail;
 	for (res = res0; res; res = res->ai_next) {
 		if (bind(sd, res->ai_addr, res->ai_addrlen) == 0)
-			return (0);
+			goto end;
 	}
-	return (-1);
+
+fail:
+	rval = -1;
+end:
+	freeaddrinfo(res0);
+	return rval;
 }
 
 
@@ -584,7 +590,7 @@ fetch_read(conn_t *conn, char *buf, size_t len)
 			rlen = read(conn->sd, buf, len);
 		if (rlen >= 0)
 			break;
-	
+
 		if (errno != EINTR || !fetchRestartCalls)
 			return (-1);
 	}
