@@ -67,7 +67,7 @@ add_main(int argc, char *argv[])
 		snprintf(lp, sizeof(lp), "%s/%s", GETDB(LOCAL), *argv);
 
 		if (db_eopen(buf, &pkg)) {
-			rval = 1;\
+			rval = 1;
 			continue;
 		}
 		rval |= add(pkg);
