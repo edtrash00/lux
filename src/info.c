@@ -5,9 +5,9 @@
 
 #include "pkg.h"
 
-enum Flags {
-	LFLAG = 0x04, /* list files */
-	RFLAG = 0x20  /* list deps  */
+enum {
+	LFLAG = 0x01, /* list files */
+	RFLAG = 0x02, /* list deps  */
 };
 
 static int putch;
@@ -26,10 +26,7 @@ print_node(const char *prefix, struct node *np, int nopath)
 		if (putch++)
 			putchar(brk);
 
-		if (*PKG_DIR == '/')
-			snprintf(path, sizeof(path), "%s%s", PKG_DIR, str);
-		else
-			snprintf(path, sizeof(path), "%s/%s", PKG_DIR, str);
+		snprintf(path, sizeof(path), "%s%s", PKG_DIR, str);
 
 		if (nopath)
 			printf("%s%s", pre, str);

@@ -21,11 +21,10 @@
 Package *
 db_open(const char *file)
 {
-	char **sp, *buf = NULL, *p;
+	char buf[BUFSIZ], **sp, *p;
 	FILE *fp;
 	off_t *op;
 	Package *pkg;
-	size_t size = 0;
 	ssize_t len;
 	struct node **np;
 
@@ -46,8 +45,8 @@ db_open(const char *file)
 	pkg->files       = NULL;
 	pkg->flags       = NULL;
 
-	while ((len = getline(&buf, &size, fp)) != EOF) {
-		buf[len - 1] = '\0'; /* remove trailing newline */
+	while ((len = fgetline(buf, sizeof(buf), fp)) != EOF) {
+		buf[len] = '\0'; /* remove trailing newline */
 		sp = NULL;
 		np = NULL;
 		op = NULL;
@@ -115,8 +114,6 @@ err:
 failure:
 	pkg = NULL;
 done:
-	free(buf);
-
 	if (fp)
 		fclose(fp);
 

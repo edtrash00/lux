@@ -33,3 +33,4 @@ stoll(const char *str, long long min, long long max)
 
 	return ll;
 }
+

@@ -1,5 +1,7 @@
 #include <sys/types.h>
 
+#include <stdio.h>
+
 #include "arg.h"
 #include "config.h"
 #include "compat.h"
@@ -7,7 +9,7 @@
 #define GETDB(x) \
 ((x) == LOCAL ? PKG_LDB : (x) == REMOTE ? PKG_RDB : (x) == NONE ? "." : NULL)
 
-enum RType {
+enum {
 	LOCAL,
 	REMOTE,
 	NONE
@@ -39,6 +41,9 @@ void db_close(Package *);
 
 /* download.c */
 int download(char *, const char *, const char *);
+
+/* fgetline.c */
+ssize_t fgetline(char *, size_t, FILE *);
 
 /* fs.c */
 int copy(const char *, const char *);

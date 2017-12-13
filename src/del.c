@@ -10,10 +10,7 @@ rmfromsys(const char *path)
 {
 	char buf[PATH_MAX];
 
-	if (*PKG_DIR == '/')
-		snprintf(buf, sizeof(buf), "%s%s", PKG_DIR, path);
-	else
-		snprintf(buf, sizeof(buf), "%s/%s", PKG_DIR, path);
+	snprintf(buf, sizeof(buf), "%s%s", PKG_DIR, path);
 
 	if (remove(buf) < 0) {
 		warn("remove %s", buf);

@@ -10,10 +10,7 @@ mvtosys(const char *path)
 {
 	char buf[PATH_MAX];
 
-	if (*PKG_DIR == '/')
-		snprintf(buf, sizeof(buf), "%s%s", PKG_DIR, path);
-	else
-		snprintf(buf, sizeof(buf), "%s/%s", PKG_DIR, path);
+	snprintf(buf, sizeof(buf), "%s%s", PKG_DIR, path);
 
 	if (move(path, buf) < 0) {
 		warn("move %s -> %s", path, buf);

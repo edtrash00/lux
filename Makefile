@@ -22,11 +22,13 @@ LIBBINSRC=\
 	src/add.c\
 	src/del.c\
 	src/fetch.c\
-	src/info.c
+	src/info.c\
+	src/shared.c
 
 LIBPKGSRC=\
 	lib/pkg/db.c\
 	lib/pkg/download.c\
+	lib/pkg/fgetline.c\
 	lib/pkg/fs.c\
 	lib/pkg/node.c\
 	lib/pkg/util.c
