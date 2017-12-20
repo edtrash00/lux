@@ -6,7 +6,6 @@
 #include "pkg.h"
 
 #define NAME        6382843298            /* name        */
-#define LONGNAME    249786571779427685    /* long-name   */
 #define VERSION     229390708560831       /* version     */
 #define LICENSE     229372341555262       /* license     */
 #define DESCRIPTION 13751386334653244867U /* description */
@@ -35,7 +34,6 @@ db_open(const char *file)
 		goto failure;
 
 	pkg->name        = NULL;
-	pkg->longname    = NULL;
 	pkg->version     = NULL;
 	pkg->license     = NULL;
 	pkg->description = NULL;
@@ -62,9 +60,6 @@ db_open(const char *file)
 		switch (hash(buf)) {
 		case NAME:
 			sp = &pkg->name;
-			break;
-		case LONGNAME:
-			sp = &pkg->longname;
 			break;
 		case VERSION:
 			sp = &pkg->version;

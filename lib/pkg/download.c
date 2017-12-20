@@ -1,45 +1,31 @@
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <curl/curl.h>
 
-#include "fetch.h"
+#include <stdio.h>
 
 int
 download(char *URL, const char *path, const char *flags)
 {
-	char buf[BUFSIZ];
-	int rval = 0, fd = -1;
-	ssize_t readcnt;
-	struct fetchIO *f = NULL;
-	struct url *url = NULL;
+	CURL *curl;
+	CURLcode res;
+	FILE *file = NULL;
+	int rval = 0;
 
-	if (!(url = fetchParseURL(URL)))
-		goto failure;
+	if ((curl = curl_easy_init()))
+		goto err;
+	if ((file = fopen(path, "w")))
+		goto err;
 
-	if (!(f = fetchGet(url, flags)))
-		goto failure;
-
-	if ((fd = open(path, O_WRONLY|O_CREAT|O_TRUNC, 0644)) < 0)
-		goto failure;
-
-	while ((readcnt = fetchIO_read(f, buf, sizeof(buf))) > 0)
-		if (write(fd, buf, readcnt) != readcnt)
-			goto failure;
-
-	if (readcnt < 0)
-		goto failure;
+	curl_easy_setopt(curl, CURLOPT_URL, URL);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
+	if ((res = curl_easy_perform(curl)) < 0)
+		goto err;
 
 	goto done;
-failure:
+err:
 	rval = -1;
 done:
-	if (f)
-		fetchIO_close(f);
-	if (fd != -1)
-		close(fd);
-	if (url)
-		fetchFreeURL(url);
-
+	if (file)
+		fclose(file);
+	curl_easy_cleanup(curl);
 	return rval;
 }

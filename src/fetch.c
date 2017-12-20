@@ -5,8 +5,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "fetch.h"
 #include "pkg.h"
+
+#define URL_HOSTLEN   255
+#define URL_SCHEMELEN 16
+#define URL_USERLEN   256
+#define URL_PWDLEN    256
 
 #define FMT     PKG_FMT
 #define URL_MAX (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
@@ -22,12 +26,8 @@ fetch(Package *pkg)
 	snprintf(url, sizeof(url), "%s/%s", buf, file);
 	snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
 
-	fetchLastErrCode = 0;
 	if (download(url, tmp, NULL) < 0) {
-		if (fetchLastErrCode)
-			warnx("download %s: %s", url, fetchLastErrString);
-		else
-			warn("download %s", tmp);
+		warn("download %s", tmp);
 		goto failure;
 	}
 
