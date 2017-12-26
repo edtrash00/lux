@@ -8,7 +8,6 @@ int
 download(char *URL, const char *path, const char *flags)
 {
 	CURL *curl;
-	CURLcode res = 0;
 	FILE *file = NULL;
 	int rval = 0;
 
@@ -19,12 +18,11 @@ download(char *URL, const char *path, const char *flags)
 
 	curl_easy_setopt(curl, CURLOPT_URL, URL);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
-	if ((res = curl_easy_perform(curl)) > 0)
+	if ((curl_errno = curl_easy_perform(curl)))
 		goto err;
 
 	goto done;
 err:
-	curl_errno = res;
 	rval       = -1;
 done:
 	if (file)
