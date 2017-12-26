@@ -1,3 +1,5 @@
+#include <curl/curl.h>
+
 #include <err.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -27,7 +29,11 @@ fetch(Package *pkg)
 	snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
 
 	if (download(url, tmp, NULL) < 0) {
-		warn("download %s", tmp);
+		if (curl_errno)
+			warnx("download %s: %s",
+			    url, curl_easy_strerror(curl_errno));
+		else
+			warn("download %s", tmp);
 		goto failure;
 	}
 

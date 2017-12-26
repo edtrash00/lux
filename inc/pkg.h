@@ -35,6 +35,8 @@ typedef struct {
 	char *description;
 } Package;
 
+extern int curl_errno;
+
 /* db.c */
 Package * db_open(const char *);
 void db_close(Package *);
