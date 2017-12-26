@@ -9,23 +9,24 @@
 
 #include "pkg.h"
 
-#define URL_HOSTLEN   255
-#define URL_SCHEMELEN 16
-#define URL_USERLEN   256
-#define URL_PWDLEN    256
+enum {
+	URL_HOSTLEN   = 255,
+	URL_SCHEMELEN = 16,
+	URL_USERLEN   = 256,
+	URL_PWDLEN    = 256,
+	URL_MAX       = (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
+};
 
 #define FMT     PKG_FMT
-#define URL_MAX (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
 
 static int
 fetch(Package *pkg)
 {
-	char file[NAME_MAX], buf[URL_MAX], url[PATH_MAX], tmp[PATH_MAX];
+	char file[NAME_MAX], url[PATH_MAX], tmp[PATH_MAX];
 	int rval = 0;
 
-	snprintf(buf, sizeof(buf), "%s", PKG_SRC);
 	snprintf(file, sizeof(file), "%s-%s%s", pkg->name, pkg->version, FMT);
-	snprintf(url, sizeof(url), "%s/%s", buf, file);
+	snprintf(url, sizeof(url), "%.*s/%s", URL_MAX, PKG_SRC, file);
 	snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
 
 	if (download(url, tmp, NULL) < 0) {
