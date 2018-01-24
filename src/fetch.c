@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "pkg.h"
@@ -17,24 +18,43 @@ enum {
 	URL_MAX       = (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
 };
 
-#define FMT     PKG_FMT
-
 static int
 fetch(Package *pkg)
 {
-	char file[NAME_MAX], url[PATH_MAX], tmp[PATH_MAX];
-	int rval = 0;
+	FILE *fp[2] = { NULL };
+	char buf[BUFSIZ], file[NAME_MAX], url[PATH_MAX], tmp[PATH_MAX];
+	int i = 0, rval = 0;
+	ssize_t lhash, rhash;
 
-	snprintf(file, sizeof(file), "%s-%s%s", pkg->name, pkg->version, FMT);
-	snprintf(url, sizeof(url), "%.*s/%s", URL_MAX, PKG_SRC, file);
-	snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
+	for (; i < PKG_NUM; i++) {
+		snprintf(file, sizeof(file), "%s-%s%s",
+		    pkg->name, pkg->version, !i ? PKG_FMT : PKG_SIG);
+		snprintf(url, sizeof(url), "%.*s/%s", URL_MAX, PKG_SRC, file);
+		snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
 
-	if (download(url, tmp, NULL) < 0) {
-		if (curl_errno)
-			warnx("download %s: %s",
-			    url, curl_easy_strerror(curl_errno));
-		else
-			warn("download %s", tmp);
+		if (!(fp[i] = fopen(tmp, "rw"))) {
+			warn("fopen %s", tmp);
+			goto failure;
+		}
+
+		if (download(url, fp[i], NULL) < 0) {
+			if (curl_errno)
+				warnx("download %s: %s",
+				    url, curl_easy_strerror(curl_errno));
+			else
+				warn("download %s", tmp);
+			goto failure;
+		}
+	}
+
+	fread(buf, sizeof(buf), sizeof(char), fp[1]);
+	buf[strlen(buf)-1] = '\0';
+
+	lhash = filetohash(fp[0]);
+	rhash = stoll(buf, 0, SIZE_MAX);
+
+	if (lhash != rhash) {
+		warnx("download: failed checksum");
 		goto failure;
 	}
 
@@ -42,6 +62,10 @@ fetch(Package *pkg)
 failure:
 	rval = 1;
 done:
+	if (fp[0] != NULL)
+		fclose(fp[0]);
+	if (fp[1] != NULL)
+		fclose(fp[1]);
 	return rval;
 }
 

@@ -24,9 +24,8 @@ LIBBINSRC=\
 
 LIBPKGSRC=\
 	lib/pkg/db.c\
-	lib/pkg/download.c\
-	lib/pkg/fgetline.c\
 	lib/pkg/fs.c\
+	lib/pkg/net.c\
 	lib/pkg/node.c\
 	lib/pkg/util.c
 

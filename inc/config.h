@@ -9,3 +9,5 @@
 #define PKG_SRC "url"
 #define PKG_FMT ".tar.gz"
 #define PKG_SIG ".sig"
+
+#define PKG_NUM 2

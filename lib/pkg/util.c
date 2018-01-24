@@ -24,14 +24,26 @@ fgetline(char *buf, size_t bsize, FILE *stream)
 	return n;
 }
 
-unsigned long
-hash(char *str)
+size_t
+filetohash(FILE *fp)
 {
 	size_t hash = 5381;
-	int c;
+	int ch;
 
-	while ((c = *str++))
-		hash = ((hash << 5) + hash) ^ c;
+	while ((ch = getc(fp)) != EOF)
+		hash = ((hash << 5) + hash) ^ ch;
+
+	return hash;
+}
+
+size_t
+strtohash(char *str)
+{
+	size_t hash = 5381;
+	int ch;
+
+	while ((ch = *str++))
+		hash = ((hash << 5) + hash) ^ ch;
 
 	return hash;
 }
@@ -56,4 +68,3 @@ stoll(const char *str, long long min, long long max)
 
 	return ll;
 }
-

@@ -57,7 +57,7 @@ db_open(const char *file)
 			continue;
 		*p++ = '\0';
 
-		switch (hash(buf)) {
+		switch (strtohash(buf)) {
 		case NAME:
 			sp = &pkg->name;
 			break;

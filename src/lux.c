@@ -27,7 +27,7 @@ main(int argc, char *argv[])
 	if (!argc)
 		usage();
 
-	switch (hash(*argv)) {
+	switch (strtohash(*argv)) {
 	case ADD:
 		fn = add_main;
 		break;
