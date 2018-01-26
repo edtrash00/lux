@@ -49,13 +49,13 @@ strtohash(char *str)
 }
 
 long long
-stoll(const char *str, long long min, long long max)
+stoll(const char *str, long long min, long long max, int base)
 {
 	char *end;
 	long long ll;
 
 	errno = 0;
-	ll = strtoll(str, &end, 10);
+	ll = strtoll(str, &end, base);
 
 	if (end == str || *end != '\0')
 		errno = EINVAL;

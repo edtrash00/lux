@@ -1,3 +1,11 @@
+#ifndef ACCESSPERMS
+#define ACCESSPERMS (S_IRWXU|S_IRWXG|S_IRWXO)
+#endif
+
+#ifndef DEFFILEMODE
+#define DEFFILEMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)
+#endif
+
 #ifndef __progname
 extern char *__progname;
 #endif
@@ -8,4 +16,8 @@ extern char *__progname;
 
 #ifndef setprogname
 #define setprogname(x) __progname = x
+#endif
+
+#ifndef MIN
+#define MIN(a, b) (((a) > (b)) ? (b) : (a))
 #endif

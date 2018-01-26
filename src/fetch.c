@@ -51,12 +51,16 @@ fetch(Package *pkg)
 	buf[strlen(buf)-1] = '\0';
 
 	lhash = filetohash(fp[0]);
-	rhash = stoll(buf, 0, SIZE_MAX);
+	rhash = stoll(buf, 0, SIZE_MAX, 10);
 
 	if (lhash != rhash) {
-		warnx("download: failed checksum");
+		warnx("download %s: failed checksum", pkg->name);
 		goto failure;
 	}
+
+	/* fix later, fileno is not going to work as a fd */
+	if (unarchive(fileno(fp[0])) < 0)
+		err(1, "unarchive %s", pkg->name);
 
 	goto done;
 failure:

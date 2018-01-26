@@ -50,12 +50,11 @@ db_open(const char *file)
 		op = NULL;
 
 		/* ignore blank lines */
-		if (*buf == '\0')
+		if (*buf == '\0' || *buf == '#')
 			continue;
 
-		for (p = buf; *p != ':'; p++)
-			continue;
-		*p++ = '\0';
+		if ((p = strchr(buf, ':')))
+			*p++ = '\0';
 
 		switch (strtohash(buf)) {
 		case NAME:
@@ -93,7 +92,7 @@ db_open(const char *file)
 			break;
 		}
 
-		if (op && (*op = stoll(p, 0, UINT_MAX)) < 0)
+		if (op && (*op = stoll(p, 0, UINT_MAX, 10)) < 0)
 			goto err;
 
 		if (sp && !(*sp = strdup(p)))

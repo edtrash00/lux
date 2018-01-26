@@ -23,6 +23,7 @@ LIBBINSRC=\
 	src/shared.c
 
 LIBPKGSRC=\
+	lib/pkg/ar.c\
 	lib/pkg/db.c\
 	lib/pkg/fs.c\
 	lib/pkg/net.c\

@@ -37,6 +37,9 @@ typedef struct {
 
 extern int curl_errno;
 
+/* ar.c */
+int unarchive(int);
+
 /* db.c */
 Package * db_open(const char *);
 void db_close(Package *);
@@ -61,7 +64,7 @@ int pushnode(struct node **, struct node *);
 /* util.c */
 size_t filetohash(FILE *);
 size_t strtohash(char *);
-long long stoll(const char *, long long, long long);
+long long stoll(const char *, long long, long long, int);
 
 /* src */
 int add_main(int, char **);
