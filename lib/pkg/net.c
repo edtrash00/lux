@@ -1,27 +1,38 @@
-#include <curl/curl.h>
-
 #include <stdio.h>
+#include <unistd.h>
 
-int curl_errno;
+#include "fetch.h"
 
 int
-download(char *URL, FILE *fp, const char *flags)
+download(char *URL, int fd, const char *flags)
 {
-	CURL *curl;
+	char buf[BUFSIZ];
 	int rval = 0;
+	ssize_t readcnt;
+	struct fetchIO *f = NULL;
+	struct url *url = NULL;
 
-	if (!(curl = curl_easy_init()))
-		goto err;
+	if (!(url = fetchParseURL(URL)))
+		goto failure;
 
-	curl_easy_setopt(curl, CURLOPT_URL, URL);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-	if ((curl_errno = curl_easy_perform(curl)))
-		goto err;
+	if (!(f = fetchGet(url, flags)))
+		goto failure;
+
+	while ((readcnt = fetchIO_read(f, buf, sizeof(buf))) > 0)
+		if (write(fd, buf, readcnt) != readcnt)
+			goto failure;
+
+	if (readcnt < 0)
+		goto failure;
 
 	goto done;
-err:
+failure:
 	rval = -1;
 done:
-	curl_easy_cleanup(curl);
+	if (f)
+		fetchIO_close(f);
+	if (url)
+		fetchFreeURL(url);
+
 	return rval;
 }

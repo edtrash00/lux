@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #define EOL '\n'
 
@@ -25,13 +26,15 @@ fgetline(char *buf, size_t bsize, FILE *stream)
 }
 
 size_t
-filetohash(FILE *fp)
+filetohash(int fd)
 {
-	size_t hash = 5381;
-	int ch;
+	size_t i, rf, hash = 5381;
+	char buf[BUFSIZ];
 
-	while ((ch = getc(fp)) != EOF)
-		hash = ((hash << 5) + hash) ^ ch;
+	while ((rf = read(fd, buf, sizeof(buf))) > 0) {
+		for (i = 0; i < rf; i++)
+			hash = ((hash << 5) + hash) ^ buf[i];
+	}
 
 	return hash;
 }

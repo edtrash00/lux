@@ -45,7 +45,7 @@ Package * db_open(const char *);
 void db_close(Package *);
 
 /* download.c */
-int download(char *, FILE *, const char *);
+int download(char *, int, const char *);
 
 /* fgetline.c */
 ssize_t fgetline(char *, size_t, FILE *);
@@ -62,7 +62,7 @@ struct node * popnode(struct node **);
 int pushnode(struct node **, struct node *);
 
 /* util.c */
-size_t filetohash(FILE *);
+size_t filetohash(int);
 size_t strtohash(char *);
 long long stoll(const char *, long long, long long, int);
 

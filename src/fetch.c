@@ -8,68 +8,65 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "fetch.h"
 #include "pkg.h"
 
-enum {
-	URL_HOSTLEN   = 255,
-	URL_SCHEMELEN = 16,
-	URL_USERLEN   = 256,
-	URL_PWDLEN    = 256,
-	URL_MAX       = (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
-};
+#define FILEMODE (O_RDWR|O_CREAT|O_TRUNC)
+#define URL_MAX  (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
 
 static int
 fetch(Package *pkg)
 {
-	FILE *fp[2] = { NULL };
 	char buf[BUFSIZ], file[NAME_MAX], url[PATH_MAX], tmp[PATH_MAX];
-	int i = 0, rval = 0;
-	ssize_t lhash, rhash;
+	int fd[2] = {-1}, i = 0, rval = 0;
+	ssize_t rf, lsum, rsum;
 
 	for (; i < PKG_NUM; i++) {
 		snprintf(file, sizeof(file), "%s-%s%s",
-		    pkg->name, pkg->version, !i ? PKG_FMT : PKG_SIG);
+		    pkg->name, pkg->version, (i == 0) ? PKG_FMT : PKG_SIG);
 		snprintf(url, sizeof(url), "%.*s/%s", URL_MAX, PKG_SRC, file);
 		snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
 
-		if (!(fp[i] = fopen(tmp, "rw"))) {
-			warn("fopen %s", tmp);
+		if ((fd[i] = open(tmp, FILEMODE, DEFFILEMODE)) < 0) {
+			warn("open %s", tmp);
 			goto failure;
 		}
 
-		if (download(url, fp[i], NULL) < 0) {
-			if (curl_errno)
-				warnx("download %s: %s",
-				    url, curl_easy_strerror(curl_errno));
+		fetchLastErrCode = 0;
+		if (download(url, fd[i], NULL) < 0) {
+			if (fetchLastErrCode)
+				warnx("download %s: %s", url, fetchLastErrString);
 			else
 				warn("download %s", tmp);
 			goto failure;
 		}
 	}
 
-	fread(buf, sizeof(buf), sizeof(char), fp[1]);
-	buf[strlen(buf)-1] = '\0';
+	rsum = 0;
+	while ((rf = read(fd[1], buf, sizeof(buf))) > 0)
+		rsum += rf;
+	buf[rsum-1] = '\0';
 
-	lhash = filetohash(fp[0]);
-	rhash = stoll(buf, 0, SIZE_MAX, 10);
+	lsum = filetohash(fd[0]);
+	rsum = stoll(buf, 0, SIZE_MAX, 10);
 
-	if (lhash != rhash) {
+	if (lsum != rsum) {
 		warnx("download %s: failed checksum", pkg->name);
 		goto failure;
 	}
 
-	/* fix later, fileno is not going to work as a fd */
-	if (unarchive(fileno(fp[0])) < 0)
+	lseek(fd[0], 0, SEEK_SET);
+	if (unarchive(fd[0]) < 0)
 		err(1, "unarchive %s", pkg->name);
 
 	goto done;
 failure:
 	rval = 1;
 done:
-	if (fp[0] != NULL)
-		fclose(fp[0]);
-	if (fp[1] != NULL)
-		fclose(fp[1]);
+	if (fd[0] != -1)
+		close(fd[0]);
+	if (fd[1] != -1)
+		close(fd[1]);
 	return rval;
 }
 
