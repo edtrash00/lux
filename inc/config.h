@@ -5,7 +5,7 @@
 #define PKG_TMP "/var/pkg/cache"
 
 #define PKG_SRC "url"
-#define PKG_FMT ".tar.gz"
+#define PKG_FMT ".tzz"
 #define PKG_SIG ".sig"
 
 #define PKG_NUM 2

@@ -44,9 +44,6 @@ int unarchive(int);
 Package * db_open(const char *);
 void db_close(Package *);
 
-/* download.c */
-int download(char *, int, const char *);
-
 /* fgetline.c */
 ssize_t fgetline(char *, size_t, FILE *);
 
@@ -54,6 +51,9 @@ ssize_t fgetline(char *, size_t, FILE *);
 int copy(const char *, const char *);
 int move(const char *, const char *);
 int remove(const char *);
+
+/* net.c */
+int netfd(char *, int, const char *);
 
 /* node.c */
 struct node * addelement(const void *);

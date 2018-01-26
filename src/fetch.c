@@ -19,10 +19,10 @@ fetch(Package *pkg)
 {
 	char buf[BUFSIZ], file[NAME_MAX], url[PATH_MAX], tmp[PATH_MAX];
 	int fd[2] = {-1}, i = 0, rval = 0;
-	ssize_t rf, lsum, rsum;
+	ssize_t rf, lsum, rsum = 0;
 
 	for (; i < PKG_NUM; i++) {
-		snprintf(file, sizeof(file), "%s-%s%s",
+		snprintf(file, sizeof(file), "%s#%s%s",
 		    pkg->name, pkg->version, (i == 0) ? PKG_FMT : PKG_SIG);
 		snprintf(url, sizeof(url), "%.*s/%s", URL_MAX, PKG_SRC, file);
 		snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
@@ -33,16 +33,15 @@ fetch(Package *pkg)
 		}
 
 		fetchLastErrCode = 0;
-		if (download(url, fd[i], NULL) < 0) {
+		if (netfd(url, fd[i], NULL) < 0) {
 			if (fetchLastErrCode)
-				warnx("download %s: %s", url, fetchLastErrString);
+				warnx("netfd %s: %s", url, fetchLastErrString);
 			else
-				warn("download %s", tmp);
+				warn("netfd %s", tmp);
 			goto failure;
 		}
 	}
 
-	rsum = 0;
 	while ((rf = read(fd[1], buf, sizeof(buf))) > 0)
 		rsum += rf;
 	buf[rsum-1] = '\0';
@@ -51,13 +50,15 @@ fetch(Package *pkg)
 	rsum = stoll(buf, 0, SIZE_MAX, 10);
 
 	if (lsum != rsum) {
-		warnx("download %s: failed checksum", pkg->name);
+		warnx("fetch %s: failed checksum", pkg->name);
 		goto failure;
 	}
 
 	lseek(fd[0], 0, SEEK_SET);
-	if (unarchive(fd[0]) < 0)
-		err(1, "unarchive %s", pkg->name);
+	if (unarchive(fd[0]) < 0) {
+		warn(1, "unarchive %s", pkg->name);
+		goto failure;
+	}
 
 	goto done;
 failure:

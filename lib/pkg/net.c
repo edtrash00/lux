@@ -4,7 +4,7 @@
 #include "fetch.h"
 
 int
-download(char *URL, int fd, const char *flags)
+netfd(char *URL, int fd, const char *flags)
 {
 	char buf[BUFSIZ];
 	int rval = 0;
