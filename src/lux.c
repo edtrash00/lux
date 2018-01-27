@@ -3,10 +3,12 @@
 
 #include "pkg.h"
 
-#define ADD   193409604
-#define DEL   193404520
-#define FETCH 210624503705
-#define INFO  6382793707
+enum {
+	ADD   = 97,  /* add   */
+	DEL   = 109, /* del   */
+	FETCH = 124, /* fetch */
+	INFO  = 14   /* info  */
+};
 
 static void
 usage(void)

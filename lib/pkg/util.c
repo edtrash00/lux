@@ -29,7 +29,7 @@ size_t
 filetohash(int fd)
 {
 	size_t i, rf, hash = 5381;
-	char buf[BUFSIZ];
+	unsigned char buf[BUFSIZ];
 
 	while ((rf = read(fd, buf, sizeof(buf))) > 0) {
 		for (i = 0; i < rf; i++)
@@ -39,19 +39,19 @@ filetohash(int fd)
 	return hash;
 }
 
-size_t
+unsigned
 strtohash(char *str)
 {
-	size_t hash = 5381;
-	int ch;
+	unsigned char *p = (unsigned char *)str;
+	unsigned int  ch, hash = 0;
 
-	while ((ch = *str++))
-		hash = ((hash << 5) + hash) ^ ch;
+	while ((ch = *p++))
+		hash = (hash ^ ch) & 0xFF;
 
 	return hash;
 }
 
-long long
+ssize_t
 stoll(const char *str, long long min, long long max, int base)
 {
 	char *end;

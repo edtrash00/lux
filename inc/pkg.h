@@ -29,7 +29,6 @@ typedef struct {
 	off_t size;
 	off_t pkgsize;
 	char *name;
-	char *longname;
 	char *version;
 	char *license;
 	char *description;
@@ -63,8 +62,8 @@ int pushnode(struct node **, struct node *);
 
 /* util.c */
 size_t filetohash(int);
-size_t strtohash(char *);
-long long stoll(const char *, long long, long long, int);
+unsigned strtohash(char *);
+size_t stoll(const char *, long long, long long, int);
 
 /* src */
 int add_main(int, char **);

@@ -5,17 +5,19 @@
 
 #include "pkg.h"
 
-#define NAME        6382843298            /* name        */
-#define VERSION     229390708560831       /* version     */
-#define LICENSE     229372341555262       /* license     */
-#define DESCRIPTION 13751386334653244867U /* description */
-#define SIZE        6383314208            /* size        */
-#define PKGSIZE     229388381659868       /* pkgsize     */
-#define RUNDEP      229394969610032       /* run-dep     */
-#define MAKEDEP     7569334749620571      /* make-dep    */
-#define DIRECTORY   193404666             /* dir         */
-#define AFILE       6382564547            /* file        */
-#define FLAG        6382568041            /* flag        */
+enum {
+	NAME        = 7,   /* name        */
+	VERSION     = 122, /* version     */
+	LICENSE     = 123, /* license     */
+	DESCRIPTION = 102, /* description */
+	SIZE        = 5,   /* size        */
+	PKGSIZE     = 121, /* pkgsize     */
+	RUNDEP      = 53,  /* run-dep     */
+	MAKEDEP     = 94,  /* make-dep    */
+	DIRECTORY   = 127, /* dir         */
+	AFILE       = 6,   /* file        */
+	FLAG        = 12   /* flag        */
+};
 
 Package *
 db_open(const char *file)
@@ -117,7 +119,6 @@ done:
 void
 db_close(Package *pkg) {
 	free(pkg->name);
-	free(pkg->longname);
 	free(pkg->version);
 	free(pkg->license);
 	free(pkg->description);
