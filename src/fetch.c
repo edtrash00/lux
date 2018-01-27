@@ -54,12 +54,6 @@ fetch(Package *pkg)
 		goto failure;
 	}
 
-	lseek(fd[0], 0, SEEK_SET);
-	if (unarchive(fd[0]) < 0) {
-		warn(1, "unarchive %s", pkg->name);
-		goto failure;
-	}
-
 	goto done;
 failure:
 	rval = 1;
