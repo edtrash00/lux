@@ -10,48 +10,46 @@ enum {
 	RFLAG = 0x02, /* list deps  */
 };
 
-static int putch;
-
-static void
-print_node(const char *prefix, struct node *np, int nopath)
+static int
+print_node(const char *prefix, struct node *np, int putch)
 {
-	char path[PATH_MAX];
-	char brk, *pre, *str;
+	char path[PATH_MAX], *str;
 
 	for (; np; np = np->next) {
-		str = (char *)np->data;
-		pre = prefix ? (char *)prefix : "";
-		brk = prefix ? '\n' : ' ';
+		str = np->data;
+		if (putch)
+			putchar(' ');
 
-		if (putch++)
-			putchar(brk);
-
-		snprintf(path, sizeof(path), "%s%s", PKG_DIR, str);
-
-		if (nopath)
-			printf("%s%s", pre, str);
-		else
-			printf("%s%s", pre, path);
+		if (*prefix == 'D' || *prefix == 'F') {
+			snprintf(path, sizeof(path), "%s%s", PKG_DIR, str);
+			printf("%s%s", prefix, path);
+		} else {
+			printf("%s%s", prefix, str);
+		}
 	}
+
+	return 1;
 }
 
 static void
 info(Package *pkg, int opts)
 {
+	int putch = 0;
+
 	printf(
 	    "Name:        %s\n"
 	    "Version:     %s\n"
 	    "License:     %s\n"
 	    "Description: %s\n",
-	    pkg->longname, pkg->version, pkg->license, pkg->description);
+	    pkg->name, pkg->version, pkg->license, pkg->description);
 
 	if (opts & RFLAG) {
-		print_node("R: ", pkg->rdeps, 1);
-		print_node("M: ", pkg->mdeps, 1);
+		putch = print_node("R: ", pkg->rdeps, putch);
+		putch = print_node("M: ", pkg->mdeps, putch);
 	}
 	if (opts & LFLAG) {
-		print_node("D: ", pkg->dirs,  0);
-		print_node("F: ", pkg->files, 0);
+		putch = print_node("D: ", pkg->dirs,  putch);
+		putch = print_node("F: ", pkg->files, putch);
 	}
 
 	if (opts)
