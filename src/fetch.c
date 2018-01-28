@@ -11,7 +11,7 @@
 #include "fetch.h"
 #include "pkg.h"
 
-#define FILEMODE (O_RDWR|O_CREAT|O_TRUNC)
+#define FILEMODE(a) ((a) ? O_RDWR|O_CREAT|O_TRUNC : O_RDONLY)
 #define URL_MAX  (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
 
 static int
@@ -19,7 +19,8 @@ fetch(Package *pkg)
 {
 	char buf[BUFSIZ], file[NAME_MAX], url[PATH_MAX], tmp[PATH_MAX];
 	int fd[2] = {-1}, i = 0, rval = 0;
-	ssize_t rf, lsum, rsum = 0;
+	unsigned int lsum, rsum;
+	ssize_t rf, fsize = 0;
 
 	for (; i < PKG_NUM; i++) {
 		snprintf(file, sizeof(file), "%s#%s%s",
@@ -27,7 +28,7 @@ fetch(Package *pkg)
 		snprintf(url, sizeof(url), "%.*s/%s", URL_MAX, PKG_SRC, file);
 		snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
 
-		if ((fd[i] = open(tmp, FILEMODE, DEFFILEMODE)) < 0) {
+		if ((fd[i] = open(tmp, FILEMODE(i), DEFFILEMODE)) < 0) {
 			warn("open %s", tmp);
 			goto failure;
 		}
@@ -43,14 +44,19 @@ fetch(Package *pkg)
 	}
 
 	while ((rf = read(fd[1], buf, sizeof(buf))) > 0)
-		rsum += rf;
-	buf[rsum-1] = '\0';
+		fsize += rf;
+	buf[fsize-1] = '\0';
 
-	lsum = filetohash(fd[0]);
-	rsum = stoll(buf, 0, SIZE_MAX, 10);
+	lsum = filetosum(fd[0]);
+	rsum = stoll(buf, 0, SSIZE_MAX, 10);
 
 	if (lsum != rsum) {
-		warnx("fetch %s: failed checksum", pkg->name);
+		warnx("fetch %s: checksum mismatch", pkg->name);
+		goto failure;
+	}
+
+	if (fsize != pkg->pkgsize) {
+		warnx("fetch %s: size mismatch", pkg->name);
 		goto failure;
 	}
 

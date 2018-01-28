@@ -61,7 +61,7 @@ struct node * popnode(struct node **);
 int pushnode(struct node **, struct node *);
 
 /* util.c */
-size_t filetohash(int);
+unsigned filetosum(int);
 unsigned strtohash(char *);
 size_t stoll(const char *, long long, long long, int);
 
