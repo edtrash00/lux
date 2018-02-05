@@ -5,61 +5,69 @@
 
 #include "pkg.h"
 
-enum {
-	LFLAG = 0x01, /* list files */
-	RFLAG = 0x02, /* list deps  */
+enum Flags {
+	AFLAG = 0x01, /* print about      */
+	DFLAG = 0x02, /* list directories */
+	FFLAG = 0x04, /* list files       */
+	MFLAG = 0x08, /* list run deps    */
+	PFLAG = 0x10, /* print prefix     */
+	RFLAG = 0x20, /* list make deps   */
+	PUTCH = 0x40  /* print space      */
 };
 
 static int
-print_node(const char *prefix, struct node *np, int putch)
+print_node(const char *prefix, struct node *np, int opts)
 {
 	char path[PATH_MAX], *str;
 
 	for (; np; np = np->next) {
 		str = np->data;
-		if (putch)
-			putchar(' ');
+		if (opts & PUTCH)
+			putchar((opts & PFLAG) ? '\n' : ' ');
 
-		if (*prefix == 'D' || *prefix == 'F') {
+		if (opts & PFLAG)
+			printf("%s", prefix);
+
+		if (*prefix == 'D' || *prefix == 'F')
 			snprintf(path, sizeof(path), "%s%s", PKG_DIR, str);
-			printf("%s%s", prefix, path);
-		} else {
-			printf("%s%s", prefix, str);
-		}
+		else
+			snprintf(path, sizeof(path), "%s", str);
+
+		printf("%s", path);
 	}
 
-	return 1;
+	return (PUTCH);
 }
 
 static void
 info(Package *pkg, int opts)
 {
-	int putch = 0;
+	if (opts & AFLAG)
+		printf(
+		    "Name:        %s\n"
+		    "Version:     %s\n"
+		    "License:     %s\n"
+		    "Description: %s\n",
+		    pkg->name, pkg->version, pkg->license, pkg->description);
 
-	printf(
-	    "Name:        %s\n"
-	    "Version:     %s\n"
-	    "License:     %s\n"
-	    "Description: %s\n",
-	    pkg->name, pkg->version, pkg->license, pkg->description);
+	if (opts & RFLAG)
+		opts |= print_node("R: ", pkg->rdeps, opts);
+	if (opts & MFLAG)
+		opts |= print_node("M: ", pkg->mdeps, opts);
+	if (opts & DFLAG)
+		opts |= print_node("D: ", pkg->dirs,  opts);
+	if (opts & FFLAG)
+		opts |= print_node("F: ", pkg->files, opts);
 
-	if (opts & RFLAG) {
-		putch = print_node("R: ", pkg->rdeps, putch);
-		putch = print_node("M: ", pkg->mdeps, putch);
-	}
-	if (opts & LFLAG) {
-		putch = print_node("D: ", pkg->dirs,  putch);
-		putch = print_node("F: ", pkg->files, putch);
-	}
-
-	if (opts)
+	if ((opts & ~AFLAG))
 		putchar('\n');
 }
 
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: %s info [-lRr] package ...\n", getprogname());
+	fprintf(stderr, "usage: %s info [-R] [-adfmpr] package ...\n",
+	    getprogname());
 	exit(1);
 }
 
@@ -71,8 +79,20 @@ info_main(int argc, char *argv[])
 	Package *pkg;
 
 	ARGBEGIN {
-	case 'l':
-		opts |= LFLAG;
+	case 'a':
+		opts |= AFLAG;
+		break;
+	case 'd':
+		opts |= DFLAG;
+		break;
+	case 'f':
+		opts |= FFLAG;
+		break;
+	case 'm':
+		opts |= MFLAG;
+		break;
+	case 'p':
+		opts |= PFLAG;
 		break;
 	case 'r':
 		opts |= RFLAG;
@@ -86,6 +106,9 @@ info_main(int argc, char *argv[])
 
 	if (!argc)
 		usage();
+
+	if (!opts)
+		opts |= (AFLAG|DFLAG|FFLAG|MFLAG|PFLAG|RFLAG);
 
 	for (; *argv; argc--, argv++) {
 		snprintf(buf, sizeof(buf), "%s/%s", GETDB(type), *argv);
