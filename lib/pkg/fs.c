@@ -10,14 +10,17 @@
 int
 copy(const char *src, const char *dest)
 {
-	char buf[BUFSIZ];
-	int sf = -1, tf = -1, rval = 0;
 	ssize_t rf;
+	int sf, tf, rval;
+	char buf[BUFSIZ];
+
+	sf   = tf = -1;
+	rval =  0;
 
 	if ((sf = open(src, O_RDONLY, 0)) < 0)
 		goto failure;
 
-	if ((tf = open(dest, O_WRONLY|O_CREAT|O_EXCL, 644)) < 0)
+	if ((tf = open(dest, O_WRONLY | O_CREAT | O_EXCL, 644)) < 0)
 		goto failure;
 
 	while ((rf = read(sf, buf, sizeof(buf))) > 0)
@@ -64,8 +67,8 @@ move(const char *src, const char *dest)
 
 int
 remove(const char *path) {
-	int (*fn)(const char *);
 	struct stat st;
+	int (*fn)(const char *);
 
 	if (stat(path, &st) < 0)
 		return -1;

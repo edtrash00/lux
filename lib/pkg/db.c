@@ -22,12 +22,12 @@ enum {
 Package *
 db_open(const char *file)
 {
-	char buf[BUFSIZ], **sp, *p;
 	FILE *fp;
-	off_t *op;
 	Package *pkg;
-	ssize_t len;
 	struct node **np;
+	ssize_t len;
+	off_t *op;
+	char **sp, *p, buf[BUFSIZ];
 
 	if (!(fp = fopen(file, "r")))
 		goto failure;

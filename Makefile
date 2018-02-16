@@ -18,14 +18,10 @@ HDR=\
 BIN=\
 	src/lux
 
-# LIB SOURCE
-LIBBINSRC=\
-	src/add.c\
-	src/del.c\
-	src/fetch.c\
-	src/info.c\
-	src/shared.c
+BINOBJ=\
+	src/util
 
+# LIB SOURCE
 LIBFETCHSRC=\
 	lib/fetch/common.c\
 	lib/fetch/fetch.c\
@@ -42,18 +38,16 @@ LIBPKGSRC=\
 	lib/pkg/util.c
 
 # LIB PATH
-LIBBIN=   lib/libbin.a
 LIBPKG=   lib/libpkg.a
 LIBFETCH= lib/libfetch.a
 
 # LIB OBJS
-LIBBINOBJ=   $(LIBBINSRC:.c=.o)
 LIBPKGOBJ=   $(LIBPKGSRC:.c=.o)
 LIBFETCHOBJ= $(LIBFETCHSRC:.c=.o)
 
 # ALL
-LIB= $(LIBBIN) $(LIBPKG) $(LIBFETCH)
-OBJ= $(BIN:=.o) $(LIBBINOBJ) $(LIBPKGOBJ) $(LIBFETCHOBJ)
+LIB= $(BINOBJ:=.o) $(LIBBIN) $(LIBPKG) $(LIBFETCH)
+OBJ= $(BIN:=.o) $(BINOBJ:=.o) $(LIBPKGOBJ) $(LIBFETCHOBJ)
 SRC= $(BIN:=.c)
 
 # VAR RULES
@@ -77,10 +71,6 @@ lib/fetch/httperr.h: lib/fetch/http.errors
 	lib/fetch/errlist.sh http_errlist HTTP lib/fetch/http.errors > $@
 
 # LIBRARIES RULES
-$(LIBBIN): $(LIBBINOBJ)
-	$(AR) rc $@ $?
-	$(RANLIB) $@
-
 $(LIBPKG): $(LIBPKGOBJ)
 	$(AR) rc $@ $?
 	$(RANLIB) $@

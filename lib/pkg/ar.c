@@ -13,7 +13,6 @@
 #include "pkg.h"
 
 #define BLKSIZE 512
-#define WTCMODE O_WRONLY|O_TRUNC|O_CREAT
 
 enum {
 	AREGTYPE = '\0',
@@ -49,7 +48,10 @@ struct header {
 static int
 mkdirp(const char *path, mode_t dir_mode, mode_t mode)
 {
-	char *p = (char *)path, c = 0;
+	char *p, c;
+
+	c = 0;
+	p = (char *)path;
 
 	if (*path == '.' || *path == '/')
 		return 0;
@@ -71,22 +73,26 @@ mkdirp(const char *path, mode_t dir_mode, mode_t mode)
 int
 unarchive(int tarfd)
 {
-	char blk[BLKSIZE], buf[257], fname[257];
-	int fd = -1, n, rval = 0;
-	long gid, major, minor, mode, mtime, size, type, uid;
-	ssize_t rh, r;
-	struct header *head = (struct header *)blk;
+	struct header *head;
 	struct timespec times[2];
+	ssize_t rh, r;
+	long gid, major, minor, mode, mtime, size, type, uid;
+	int fd, n, rval;
+	char blk[BLKSIZE], buf[257], fname[257];
+
+	fd   = -1;
+	head = (struct header *)blk;
+	n    = 0;
+	rval = 0;
 
 	while ((rh = read(tarfd, blk, BLKSIZE)) > 0 && head->name[0]) {
-		n = snprintf(fname, sizeof(fname), "%s", PKG_DIR);
 		if (head->prefix[0])
-			n += snprintf(fname + n, sizeof(fname) - n, "%.*s/",
-			    sizeof(head->prefix), head->prefix);
+			n = snprintf(fname, sizeof(fname), "%.*s/",
+			             (int)sizeof(head->prefix), head->prefix);
 		snprintf(fname + n, sizeof(fname) - n, "%.*s",
-		    sizeof(head->name), head->name);
+		         (int)sizeof(head->name), head->name);
 
-		if ((mode = stoll(head->mode, 0, LONG_MAX, 8)) < 0 ||
+		if ((mode  = stoll(head->mode,  0, LONG_MAX, 8)) < 0 ||
 		    (mtime = stoll(head->mtime, 0, LONG_MAX, 8)) < 0)
 				goto failure;
 
@@ -98,7 +104,8 @@ unarchive(int tarfd)
 		case AREGTYPE:
 		case REGTYPE:
 		case CONTTYPE:
-			if ((fd = open(fname, WTCMODE, DEFFILEMODE)) < 0)
+			if ((fd = open(fname, O_WRONLY|O_TRUNC|O_CREAT,
+			    DEFFILEMODE)) < 0)
 				goto failure;
 			for (; size > 0; size -= BLKSIZE) {
 				if ((r = read(fd, blk, MIN(size, BLKSIZE))) < 0)
@@ -110,9 +117,9 @@ unarchive(int tarfd)
 		case LNKTYPE:
 		case SYMTYPE:
 			snprintf(buf, sizeof(buf), "%.*s",
-			    sizeof(head->linkname), head->linkname);
-			if (((head->type == SYMTYPE) ? link : symlink)
-			    (buf, fname) < 0)
+			         (int)sizeof(head->linkname), head->linkname);
+			if (((head->type == SYMTYPE) ?
+			    link : symlink)(buf, fname) < 0)
 				goto failure;
 			break;
 		case DIRTYPE:
@@ -126,7 +133,7 @@ unarchive(int tarfd)
 			    (minor = stoll(head->minor, 0, LONG_MAX, 8)) < 0)
 				goto failure;
 			type = (head->type == CHRTYPE) ? S_IFCHR :
-			    (head->type == BLKSIZE) ? S_IFBLK : S_IFIFO;
+			       (head->type == BLKSIZE) ? S_IFBLK : S_IFIFO;
 			if (mknod(fname, type|mode, makedev(major, minor)) < 0)
 				goto failure;
 			break;

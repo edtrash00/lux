@@ -9,7 +9,17 @@
 #define GETDB(x) \
 ((x) == LOCAL ? PKG_LDB : (x) == REMOTE ? PKG_RDB : (x) == NONE ? "." : NULL)
 
-enum {
+enum InfoFlags {
+	AFLAG = 0x01, /* print about      */
+	DFLAG = 0x02, /* list directories */
+	FFLAG = 0x04, /* list files       */
+	MFLAG = 0x08, /* list run deps    */
+	PFLAG = 0x10, /* print prefix     */
+	RFLAG = 0x20, /* list make deps   */
+	PUTCH = 0x40  /* print space      */
+};
+
+enum RepoTypes {
 	LOCAL,
 	REMOTE,
 	NONE
@@ -65,10 +75,8 @@ unsigned filetosum(int);
 unsigned strtohash(char *);
 size_t stoll(const char *, long long, long long, int);
 
-/* src */
-int add_main(int, char **);
-int del_main(int, char **);
-int fetch_main(int, char **);
-int info_main(int, char **);
-
-int db_eopen(const char *, Package **);
+/* src/util.c */
+int add(Package *);
+int del(Package *);
+int fetch(Package *);
+void info(Package *, int);
