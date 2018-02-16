@@ -140,7 +140,7 @@ explode(Package *pkg)
 
 	if (uncomp(fd[0], fd[1]) < 0) {
 		if (z_errno)
-			warnx("failed data %d", z_errno);
+			warnx("invalid or incomplete deflate data");
 		else
 			warn("uncomp %s -> %s", ibuf, obuf);
 		goto failure;
