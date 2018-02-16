@@ -7,12 +7,12 @@
 #include "pkg.h"
 
 enum Hash {
-	ADD   = 97,  /* add   */
-	DEL   = 109, /* del   */
-	FETCH = 124, /* fetch */
-	INFO  = 14   /* info  */
+	ADD     = 97,  /* add     */
+	DEL     = 109, /* del     */
+	EXPLODE = 111, /* explode */
+	FETCH   = 124, /* fetch   */
+	INFO    = 14   /* info    */
 };
-
 
 static int
 db_eopen(const char *path, Package **pkg)
@@ -30,8 +30,7 @@ db_eopen(const char *path, Package **pkg)
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: %s add|del|fetch|info [args] ...\n",
-	    getprogname());
+	fprintf(stderr, "add del explode fetch info\n");
 	exit(1);
 }
 
@@ -102,6 +101,32 @@ del_main(int argc, char *argv[])
 			warn("remove %s", buf);
 			rval = 1;
 		}
+	}
+
+	return rval;
+}
+
+static int
+explode_main(int argc, char *argv[])
+{
+	Package *pkg;
+	int rval;
+	char buf[PATH_MAX];
+
+	rval = 0;
+	argc--, argv++;
+
+	if (!argc)
+		usage();
+
+	for (; *argv; argc--, argv++) {
+		snprintf(buf, sizeof(buf), "%s/%s", GETDB(REMOTE), *argv);
+		if (db_eopen(buf, &pkg)) {
+			rval = 1;
+			continue;
+		}
+		rval |= explode(pkg);
+		db_close(pkg);
 	}
 
 	return rval;
@@ -206,6 +231,9 @@ main(int argc, char *argv[])
 		break;
 	case DEL:
 		fn = del_main;
+		break;
+	case EXPLODE:
+		fn = explode_main;
 		break;
 	case FETCH:
 		fn = fetch_main;

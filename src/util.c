@@ -1,4 +1,4 @@
-#include <curl/curl.h>
+#include <sys/stat.h>
 
 #include <err.h>
 #include <fcntl.h>
@@ -47,7 +47,7 @@ rmfromsys(const char *path)
 static int
 pnode(const char *prefix, struct node *np, int opts)
 {
-	char path[PATH_MAX], *str;
+	char *str, path[PATH_MAX];
 
 	for (; np; np = np->next) {
 		str = np->data;
@@ -73,13 +73,20 @@ add(Package *pkg)
 {
 	struct node *np;
 	int rval;
+	char buf[PATH_MAX];
 
 	rval = 0;
 
-	for (np = pkg->dirs; np; np = np->next)
+	for (np = pkg->dirs; np; np = np->next) {
+		snprintf(buf, sizeof(buf), "%s/%s#%s/%s",
+		         PKG_TMP, pkg->name, pkg->version, (char *)np->data);
 		rval |= mvtosys(np->data);
-	for (np = pkg->files; np; np = np->next)
+	}
+	for (np = pkg->files; np; np = np->next) {
+		snprintf(buf, sizeof(buf), "%s/%s#%s/%s",
+			PKG_TMP, pkg->name, pkg->version, (char *)np->data);
 		rval |= mvtosys(np->data);
+	}
 
 	return rval;
 }
@@ -97,6 +104,62 @@ del(Package *pkg)
 	for (np = pkg->dirs; np; np = np->next)
 		rval |= rmfromsys(np->data);
 
+	return rval;
+}
+
+int
+explode(Package *pkg)
+{
+	int fd[2], rval;
+	char ibuf[PATH_MAX], obuf[PATH_MAX];
+
+	fd[0] = fd[1] = -1;
+	rval  = 0;
+
+	snprintf(ibuf, sizeof(ibuf), "%s/%s#%s",
+	         PKG_TMP, pkg->name, pkg->version);
+
+	if (mkdir(ibuf, ACCESSPERMS) < 0) {
+		warn("mkdir %s", ibuf);
+		goto failure;
+	}
+
+	snprintf(ibuf, sizeof(ibuf), "%s/%s#%s%s",
+	         PKG_TMP, pkg->name, pkg->version, PKG_FMT);
+	snprintf(obuf, sizeof(obuf), "%s/%s#%s.tar",
+	         PKG_TMP, pkg->name, pkg->version);
+
+	if ((fd[0] = open(ibuf, O_RDONLY, 0)) < 0) {
+		warn("open %s", ibuf);
+		goto failure;
+	}
+	if ((fd[1] = open(obuf, O_RDWR | O_CREAT | O_TRUNC, DEFFILEMODE)) < 0) {
+		warn("open %s", obuf);
+		goto failure;
+	}
+
+	if (uncomp(fd[0], fd[1]) < 0) {
+		if (z_errno)
+			warnx("failed data %d", z_errno);
+		else
+			warn("uncomp %s -> %s", ibuf, obuf);
+		goto failure;
+	}
+
+	lseek(fd[1], 0, SEEK_SET);
+	if (unarchive(fd[1]) < 0) {
+		warn("unarchive %s", obuf);
+		goto failure;
+	}
+
+	goto done;
+failure:
+	rval = 1;
+done:
+	if (fd[0] != -1)
+		close(fd[0]);
+	if (fd[1] != -1)
+		close(fd[1]);
 	return rval;
 }
 

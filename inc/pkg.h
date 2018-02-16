@@ -44,9 +44,10 @@ typedef struct {
 	char *description;
 } Package;
 
-extern int curl_errno;
+extern int z_errno;
 
 /* ar.c */
+int uncomp(int, int);
 int unarchive(int);
 
 /* db.c */
@@ -78,5 +79,6 @@ size_t stoll(const char *, long long, long long, int);
 /* src/util.c */
 int add(Package *);
 int del(Package *);
+int explode(Package *);
 int fetch(Package *);
 void info(Package *, int);

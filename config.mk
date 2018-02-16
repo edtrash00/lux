@@ -5,7 +5,7 @@ RANLIB= ranlib
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_GNU_SOURCE -D_XOPEN_SOURCE=700 -D_FILE_OFFSET_BITS=64
 CFLAGS   = -Os -std=c99 -Wall -pedantic
 LDFLAGS  = -g
-LDLIBS   = -lcurl -lssl -lcrypto
+LDLIBS   = -lz -lssl -lcrypto
 
 # PATHS
 PREFIX = /usr/local

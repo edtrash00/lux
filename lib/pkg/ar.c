@@ -10,6 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "zlib.h"
 #include "pkg.h"
 
 #define BLKSIZE 512
@@ -44,6 +45,8 @@ struct header {
 	char minor[8];
 	char prefix[155];
 };
+
+int z_errno;
 
 static int
 mkdirp(const char *path, mode_t dir_mode, mode_t mode)
@@ -82,10 +85,10 @@ unarchive(int tarfd)
 
 	fd   = -1;
 	head = (struct header *)blk;
-	n    = 0;
 	rval = 0;
 
 	while ((rh = read(tarfd, blk, BLKSIZE)) > 0 && head->name[0]) {
+		n = 0;
 		if (head->prefix[0])
 			n = snprintf(fname, sizeof(fname), "%.*s/",
 			             (int)sizeof(head->prefix), head->prefix);
@@ -104,15 +107,11 @@ unarchive(int tarfd)
 		case AREGTYPE:
 		case REGTYPE:
 		case CONTTYPE:
+			if ((size = stoll(head->size, 0, LONG_MAX, 8)) < 0)
+				goto failure;
 			if ((fd = open(fname, O_WRONLY|O_TRUNC|O_CREAT,
 			    DEFFILEMODE)) < 0)
 				goto failure;
-			for (; size > 0; size -= BLKSIZE) {
-				if ((r = read(fd, blk, MIN(size, BLKSIZE))) < 0)
-					goto failure;
-				if (write(fd, blk, r) != r)
-					goto failure;
-			}
 			break;
 		case LNKTYPE:
 		case SYMTYPE:
@@ -143,7 +142,17 @@ unarchive(int tarfd)
 
 		if ((gid = stoll(head->gid, 0, LONG_MAX, 8)) < 0 ||
 		    (uid = stoll(head->uid, 0, LONG_MAX, 8)) < 0)
-				goto failure;
+			goto failure;
+
+		if (fd != -1) {
+			for (; size > 0; size -= sizeof(blk)) {
+				if ((r = read(tarfd, blk, sizeof(blk))) < 0)
+					goto failure;
+				if (write(fd, blk, MIN(r, sizeof(blk))) != r)
+					goto failure;
+			}
+			close(fd);
+		}
 
 		times[0].tv_sec  = times[1].tv_sec  = mtime;
 		times[0].tv_nsec = times[1].tv_nsec = 0;
@@ -156,9 +165,6 @@ unarchive(int tarfd)
 			    chmod(fname, mode) < 0)
 			goto failure;
 		}
-
-		if (fd != -1)
-			close(fd);
 	}
 
 	if (rh < 0)
@@ -171,5 +177,52 @@ done:
 	if (fd != -1)
 		close(fd);
 
+	return rval;
+}
+
+int
+uncomp(int ifd, int ofd)
+{
+	z_stream strm;
+	ssize_t size, rf;
+	int rval;
+	char ibuf[BUFSIZ], obuf[BUFSIZ];
+
+	rval          = 0;
+	strm.zalloc   = NULL;
+	strm.zfree    = NULL;
+	strm.opaque   = NULL;
+	strm.avail_in = 0;
+	strm.next_in  = NULL;
+
+	if ((z_errno = inflateInit(&strm)) < 0)
+		goto failure;
+
+	while (z_errno != Z_STREAM_END) {
+		if ((rf = read(ifd, ibuf, sizeof(ibuf))) < 0)
+			goto failure;
+		strm.avail_in = (unsigned)rf;
+		strm.next_in  = ibuf;
+		do {
+			strm.avail_out = sizeof(obuf);
+			strm.next_out  = obuf;
+			if ((z_errno = inflate(&strm, Z_NO_FLUSH)) < 0)
+				goto failure;
+
+			size = sizeof(obuf) - strm.avail_out;
+			if (write(ofd, obuf, size) != size)
+				goto failure;
+		} while (!strm.avail_out);
+	}
+
+	goto done;
+failure:
+	rval = -1;
+	if (z_errno == Z_MEM_ERROR) {
+		z_errno = 0;
+		errno   = ENOMEM;
+	}
+done:
+	inflateEnd(&strm);
 	return rval;
 }
