@@ -6,25 +6,6 @@
 #include "config.h"
 #include "compat.h"
 
-#define GETDB(x) \
-((x) == LOCAL ? PKG_LDB : (x) == REMOTE ? PKG_RDB : (x) == NONE ? "." : NULL)
-
-enum InfoFlags {
-	AFLAG = 0x01, /* print about      */
-	DFLAG = 0x02, /* list directories */
-	FFLAG = 0x04, /* list files       */
-	MFLAG = 0x08, /* list run deps    */
-	PFLAG = 0x10, /* print prefix     */
-	RFLAG = 0x20, /* list make deps   */
-	PUTCH = 0x40  /* print space      */
-};
-
-enum RepoTypes {
-	LOCAL,
-	REMOTE,
-	NONE
-};
-
 struct node {
 	void *data;
 	struct node *next;
@@ -75,10 +56,3 @@ int pushnode(struct node **, struct node *);
 unsigned filetosum(int);
 unsigned strtohash(char *);
 size_t stoll(const char *, long long, long long, int);
-
-/* src/util.c */
-int add(Package *);
-int del(Package *);
-int explode(Package *);
-int fetch(Package *);
-void info(Package *, int);

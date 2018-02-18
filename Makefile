@@ -18,9 +18,6 @@ HDR=\
 BIN=\
 	src/lux
 
-BINOBJ=\
-	src/util
-
 # LIB SOURCE
 LIBFETCHSRC=\
 	lib/fetch/common.c\
@@ -46,8 +43,8 @@ LIBPKGOBJ=   $(LIBPKGSRC:.c=.o)
 LIBFETCHOBJ= $(LIBFETCHSRC:.c=.o)
 
 # ALL
-LIB= $(BINOBJ:=.o) $(LIBPKG) $(LIBFETCH)
-OBJ= $(BIN:=.o) $(BINOBJ:=.o) $(LIBPKGOBJ) $(LIBFETCHOBJ)
+LIB= $(LIBPKG)  $(LIBFETCH)
+OBJ= $(BIN:=.o) $(LIBPKGOBJ) $(LIBFETCHOBJ)
 SRC= $(BIN:=.c)
 
 # VAR RULES

@@ -186,7 +186,7 @@ uncomp(int ifd, int ofd)
 	z_stream strm;
 	ssize_t size, rf;
 	int rval;
-	char ibuf[BUFSIZ], obuf[BUFSIZ];
+	unsigned char ibuf[BUFSIZ], obuf[BUFSIZ];
 
 	rval          = 0;
 	strm.zalloc   = NULL;
