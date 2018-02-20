@@ -15,25 +15,18 @@
 #define GETDB(x) \
 ((x) == LOCAL ? PKG_LDB : (x) == REMOTE ? PKG_RDB : (x) == NONE ? "." : NULL)
 
-#define FILEMODE(a) ((a) ? O_RDWR|O_CREAT|O_TRUNC : O_RDONLY)
+#define FILEMODE(a) (((a) == 0) ? O_RDWR|O_CREAT|O_TRUNC : O_RDONLY)
 #define URL_MAX     (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
 
-enum IFlags {
-	AFLAG = 0x01, /* print about      */
-	DFLAG = 0x02, /* list directories */
-	FFLAG = 0x04, /* list files       */
-	MFLAG = 0x08, /* list run deps    */
-	PFLAG = 0x10, /* print prefix     */
-	RFLAG = 0x20, /* list make deps   */
-	PUTCH = 0x40  /* print space      */
-};
-
 enum Hash {
-	ADD     = 97,  /* add     */
-	DEL     = 109, /* del     */
-	EXPLODE = 111, /* explode */
-	FETCH   = 124, /* fetch   */
-	INFO    = 14   /* info    */
+	ADD     = 97,  /* add        */
+	DEL     = 109, /* del        */
+	EXPLODE = 111, /* explode    */
+	FETCH   = 124, /* fetch      */
+	INFO    = 14,  /* info       */
+	SHOWFS  = 91,  /* show-files */
+	SHOWMD  = 94,  /* show-mdeps */
+	SHOWRD  = 53   /* show-rdeps */
 };
 
 enum RTypes {
@@ -42,22 +35,17 @@ enum RTypes {
 	NONE
 };
 
-static int opts;
-
 static int
-pnode(const char *prefix, struct node *np)
+pnode(struct node *np, int isfile, int putch)
 {
 	char *str, path[PATH_MAX];
 
 	for (; np; np = np->next) {
 		str = np->data;
-		if (opts & PUTCH)
-			putchar((opts & PFLAG) ? '\n' : ' ');
+		if (putch++)
+			putchar(' ');
 
-		if (opts & PFLAG)
-			printf("%s", prefix);
-
-		if (*prefix == 'D' || *prefix == 'F')
+		if (isfile)
 			snprintf(path, sizeof(path), "%s%s", PKG_DIR, str);
 		else
 			snprintf(path, sizeof(path), "%s", str);
@@ -65,15 +53,16 @@ pnode(const char *prefix, struct node *np)
 		printf("%s", path);
 	}
 
-	return (PUTCH);
+	return 1;
 }
 
+/* action functions */
 static int
 add(Package *pkg)
 {
 	struct node *np;
 	int i, rval;
-	char ibuf[PATH_MAX], obuf[PATH_MAX];
+	char buf[2][PATH_MAX];
 
 	i    = 0;
 	rval = 0;
@@ -81,13 +70,13 @@ add(Package *pkg)
 	for (; i < 2; i++) {
 		np = i ? pkg->files : pkg->dirs;
 		for (; np; np = np->next) {
-			snprintf(ibuf, sizeof(ibuf), "%s%s#%s/%s",
+			snprintf(buf[0], sizeof(buf[0]), "%s%s#%s/%s",
 			         PKG_TMP, pkg->name,
 			         pkg->version, (char *)np->data);
-			snprintf(obuf, sizeof(obuf), "%s%s",
+			snprintf(buf[1], sizeof(buf[1]), "%s%s",
 			         PKG_DIR, (char *)np->data);
-			if (move(ibuf, obuf) < 0) {
-				warn("move %s -> %s", ibuf, obuf);
+			if (move(buf[0], buf[1]) < 0) {
+				warn("move %s -> %s", buf[0], buf[1]);
 				rval = 1;
 			}
 		}
@@ -125,30 +114,30 @@ static int
 explode(Package *pkg)
 {
 	int fd[2], rval;
-	char ibuf[PATH_MAX], obuf[PATH_MAX];
+	char buf[2][PATH_MAX];
 
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	snprintf(ibuf, sizeof(ibuf), "%s/%s#%s",
+	snprintf(buf[0], sizeof(buf[0]), "%s/%s#%s",
 	         PKG_TMP, pkg->name, pkg->version);
 
-	if (mkdir(ibuf, ACCESSPERMS) < 0) {
-		warn("mkdir %s", ibuf);
+	if (mkdir(buf[0], ACCESSPERMS) < 0) {
+		warn("mkdir %s", buf[0]);
 		goto failure;
 	}
 
-	snprintf(ibuf, sizeof(ibuf), "%s/%s#%s%s",
+	snprintf(buf[0], sizeof(buf[0]), "%s/%s#%s%s",
 	         PKG_TMP, pkg->name, pkg->version, PKG_FMT);
-	snprintf(obuf, sizeof(obuf), "%s/%s#%s.tar",
+	snprintf(buf[1], sizeof(buf[1]), "%s/%s#%s.tar",
 	         PKG_TMP, pkg->name, pkg->version);
 
-	if ((fd[0] = open(ibuf, O_RDONLY, 0)) < 0) {
-		warn("open %s", ibuf);
+	if ((fd[0] = open(buf[0], O_RDONLY, 0)) < 0) {
+		warn("open %s", buf[0]);
 		goto failure;
 	}
-	if ((fd[1] = open(obuf, O_RDWR | O_CREAT | O_TRUNC, DEFFILEMODE)) < 0) {
-		warn("open %s", obuf);
+	if ((fd[1] = open(buf[1], O_RDWR|O_CREAT|O_TRUNC, DEFFILEMODE)) < 0) {
+		warn("open %s", buf[1]);
 		goto failure;
 	}
 
@@ -156,13 +145,13 @@ explode(Package *pkg)
 		if (z_errno)
 			warnx("invalid or incomplete deflate data");
 		else
-			warn("uncomp %s -> %s", ibuf, obuf);
+			warn("uncomp %s -> %s", buf[0], buf[1]);
 		goto failure;
 	}
 
 	lseek(fd[1], 0, SEEK_SET);
 	if (unarchive(fd[1]) < 0) {
-		warn("unarchive %s", obuf);
+		warn("unarchive %s", buf[1]);
 		goto failure;
 	}
 
@@ -183,7 +172,8 @@ fetch(Package *pkg)
 	ssize_t rf, fsize;
 	int fd[2], i, rval;
 	unsigned int lsum, rsum;
-	char buf[BUFSIZ], tmp[PATH_MAX], url[PATH_MAX], file[NAME_MAX];
+	char url[PATH_MAX], file[NAME_MAX];
+	char buf[BUFSIZ], tmp[PATH_MAX];
 
 	fd[0] = fd[1] = -1;
 	fsize = 0;
@@ -192,7 +182,7 @@ fetch(Package *pkg)
 
 	for (; i < PKG_NUM; i++) {
 		snprintf(file, sizeof(file), "%s#%s%s",
-		    pkg->name, pkg->version, (i == 0) ? PKG_FMT : PKG_SIG);
+		         pkg->name, pkg->version, (i == 0) ? PKG_FMT : PKG_SIG);
 		snprintf(url, sizeof(url), "%.*s/%s", URL_MAX, PKG_SRC, file);
 		snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
 
@@ -242,26 +232,33 @@ done:
 static int
 info(Package *pkg)
 {
-	if (opts & AFLAG)
-		printf(
-		    "Name:        %s\n"
-		    "Version:     %s\n"
-		    "License:     %s\n"
-		    "Description: %s\n",
-		    pkg->name, pkg->version, pkg->license, pkg->description);
+	printf("Name:        %s\n"
+	       "Version:     %s\n"
+	       "License:     %s\n"
+	       "Description: %s\n",
+	       pkg->name, pkg->version, pkg->license, pkg->description);
+	return 0;
+}
 
-	if (opts & RFLAG)
-		opts |= pnode("R: ", pkg->rdeps);
-	if (opts & MFLAG)
-		opts |= pnode("M: ", pkg->mdeps);
-	if (opts & DFLAG)
-		opts |= pnode("D: ", pkg->dirs);
-	if (opts & FFLAG)
-		opts |= pnode("F: ", pkg->files);
+static int
+showfiles(Package *pkg)
+{
+	pnode(pkg->dirs,  1, 0);
+	pnode(pkg->files, 1, 1);
+	return 0;
+}
 
-	if ((opts & ~AFLAG))
-		putchar('\n');
+static int
+showmdeps(Package *pkg)
+{
+	pnode(pkg->mdeps, 0, 0);
+	return 0;
+}
 
+static int
+showrdeps(Package *pkg)
+{
+	pnode(pkg->rdeps, 0, 0);
 	return 0;
 }
 
@@ -269,47 +266,10 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	        "usage: %s [-LNR] add|del|explode|fetch|info [opts] pkg...\n",
+		"usage: %s [-LNR] command package ...",
 	        getprogname());
 	exit(1);
 }
-
-static int
-setoinfo(int argc, char *argv[])
-{
-	int oldc;
-
-	oldc = argc;
-
-	ARGBEGIN {
-	case 'a':
-		opts |= AFLAG;
-		break;
-	case 'd':
-		opts |= DFLAG;
-		break;
-	case 'f':
-		opts |= FFLAG;
-		break;
-	case 'm':
-		opts |= MFLAG;
-		break;
-	case 'p':
-		opts |= PFLAG;
-		break;
-	case 'r':
-		opts |= RFLAG;
-		break;
-	default:
-		usage();
-	} ARGEND
-
-	if (!opts)
-		opts |= (AFLAG|DFLAG|FFLAG|MFLAG|PFLAG|RFLAG);
-
-	return oldc - argc;
-}
-
 
 int
 main(int argc, char *argv[])
@@ -317,22 +277,22 @@ main(int argc, char *argv[])
 	Package *pkg;
 	unsigned hash;
 	int (*fn)(Package *);
-	int onum, rval, type;
-	char *p, buf[PATH_MAX];
+	int rval, type, atype;
+	char buf[2][PATH_MAX];
 
-	onum = 0;
-	rval = 0;
+	atype = 0;
+	rval  = 0;
 	setprogname(argv[0]);
 
 	ARGBEGIN {
 	case 'L':
-		type = LOCAL;
+		atype = LOCAL;
 		break;
 	case 'N':
-		type = NONE;
+		atype = NONE;
 		break;
 	case 'R':
-		type = REMOTE;
+		atype = REMOTE;
 		break;
 	default:
 		usage();
@@ -359,44 +319,53 @@ main(int argc, char *argv[])
 	case INFO:
 		fn   = info;
 		type = LOCAL;
-		onum = setoinfo(argc, argv);
+		break;
+	case SHOWFS:
+		fn   = showfiles;
+		type = LOCAL;
+	case SHOWMD:
+		fn   = showmdeps;
+		type = LOCAL;
+		break;
+	case SHOWRD:
+		fn   = showrdeps;
+		type = LOCAL;
 		break;
 	default:
 		usage();
 	}
 
-	argc = onum ? argc - onum : argc - 1;
-	argv = onum ? argv + onum : argv + 1;
+	argc--, argv++;
+	type = atype ? atype : type;
 
 	if (!argc)
 		usage();
 
 	for (; *argv; argc--, argv++) {
-		snprintf(buf, sizeof(buf), "%s/%s", GETDB(type), *argv);
-		if (!(pkg = db_open(*argv))) {
+		snprintf(buf[0], sizeof(buf[0]), "%s/%s", GETDB(type), *argv);
+		if (!(pkg = db_open(buf[0]))) {
 			if (errno == ENOMEM)
 				err(1, NULL);
-			warn("open_db %s", *argv);
+			warn("open_db %s", buf[0]);
 			rval = 1;
 			continue;
 		}
 		rval |= fn(pkg);
 		db_close(pkg);
-	}
 
-	/* update database state */
-	switch (hash) {
-	case ADD:
-		if (!(p = strdup(buf)))
-			err(1, "strdup");
-		snprintf(buf, sizeof(buf), "%s/%s", GETDB(LOCAL), *argv);
-		if (copy(p, buf) < 0)
-			err(1, "copy %s -> %s", p, buf);
-		break;
-	case DEL:
-		if (remove(buf) < 0)
-			err(1, "remove %s", buf);
-		break;
+		/* update database state */
+		switch (hash) {
+		case ADD:
+			snprintf(buf[1], sizeof(buf[1]), "%s/%s",
+			         GETDB(LOCAL), *argv);
+			if (copy(buf[0], buf[1]) < 0)
+				err(1, "copy %s -> %s", buf[0], buf[1]);
+			break;
+		case DEL:
+			if (remove(buf[0]) < 0)
+				err(1, "remove %s", buf[0]);
+			break;
+		}
 	}
 
 	return rval;

@@ -102,8 +102,10 @@ filetosum(int fd)
 unsigned
 strtohash(char *str)
 {
-	unsigned hash = 0;
+	unsigned hash;
 	int ch;
+
+	hash = 0;
 
 	while ((ch = *str++))
 		hash ^= ch;
