@@ -15,7 +15,8 @@
 #define GETDB(x) \
 ((x) == LOCAL ? PKG_LDB : (x) == REMOTE ? PKG_RDB : (x) == NONE ? "." : NULL)
 
-#define FILEMODE(a) (((a) == 0) ? O_RDWR|O_CREAT|O_TRUNC : O_RDONLY)
+#define MODERWCT    (O_RDWR|O_CREAT|O_TRUNC)
+#define FILEMODE(a) (((a) == 0) ? MODERWCT : O_RDONLY)
 #define URL_MAX     (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
 
 enum Hash {
@@ -26,7 +27,8 @@ enum Hash {
 	INFO    = 14,  /* info       */
 	SHOWFS  = 91,  /* show-files */
 	SHOWMD  = 94,  /* show-mdeps */
-	SHOWRD  = 53   /* show-rdeps */
+	SHOWRD  = 53,  /* show-rdeps */
+	UPDATE  = 17   /* update     */
 };
 
 enum RTypes {
@@ -119,7 +121,7 @@ explode(Package *pkg)
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	snprintf(buf[0], sizeof(buf[0]), "%s/%s#%s",
+	snprintf(buf[0], sizeof(buf[0]), "%s%s#%s",
 	         PKG_TMP, pkg->name, pkg->version);
 
 	if (mkdir(buf[0], ACCESSPERMS) < 0) {
@@ -127,16 +129,16 @@ explode(Package *pkg)
 		goto failure;
 	}
 
-	snprintf(buf[0], sizeof(buf[0]), "%s/%s#%s%s",
+	snprintf(buf[0], sizeof(buf[0]), "%s%s#%s%s",
 	         PKG_TMP, pkg->name, pkg->version, PKG_FMT);
-	snprintf(buf[1], sizeof(buf[1]), "%s/%s#%s.tar",
+	snprintf(buf[1], sizeof(buf[1]), "%s%s#%s.tar",
 	         PKG_TMP, pkg->name, pkg->version);
 
 	if ((fd[0] = open(buf[0], O_RDONLY, 0)) < 0) {
 		warn("open %s", buf[0]);
 		goto failure;
 	}
-	if ((fd[1] = open(buf[1], O_RDWR|O_CREAT|O_TRUNC, DEFFILEMODE)) < 0) {
+	if ((fd[1] = open(buf[1], MODERWCT, DEFFILEMODE)) < 0) {
 		warn("open %s", buf[1]);
 		goto failure;
 	}
@@ -180,11 +182,11 @@ fetch(Package *pkg)
 	i     = 0;
 	rval  = 0;
 
-	for (; i < PKG_NUM; i++) {
+	for (; i < 2; i++) {
 		snprintf(file, sizeof(file), "%s#%s%s",
 		         pkg->name, pkg->version, (i == 0) ? PKG_FMT : PKG_SIG);
-		snprintf(url, sizeof(url), "%.*s/%s", URL_MAX, PKG_SRC, file);
-		snprintf(tmp, sizeof(tmp), "%s/%s", PKG_TMP, file);
+		snprintf(url, sizeof(url), "%.*s%s", URL_MAX, PKG_SRC, file);
+		snprintf(tmp, sizeof(tmp), "%s%s", PKG_TMP, file);
 
 		if ((fd[i] = open(tmp, FILEMODE(i), DEFFILEMODE)) < 0) {
 			warn("open %s", tmp);
@@ -262,12 +264,68 @@ showrdeps(Package *pkg)
 	return 0;
 }
 
+static int
+update(Package *pkg)
+{
+	int fd[2], rval;
+	char buf[PATH_MAX], tmp[PATH_MAX];
+
+	fd[0] = fd[1] = -1;
+	rval  = 0;
+
+	snprintf(buf, sizeof(buf), "%sdb.%s", PKG_RDB, PKG_FMT);
+
+	if ((fd[0] = open(buf, MODERWCT, DEFFILEMODE)) < 0) {
+		warn("open %s", buf);
+		goto failure;
+	}
+
+	snprintf(tmp, sizeof(tmp), "%.*sdb.%s", URL_MAX, PKG_SRC, PKG_FMT);
+
+	if (netfd(tmp, fd[0], NULL) < 0) {
+		if (fetchLastErrCode)
+			warnx("netfd %s: %s", tmp, fetchLastErrString);
+		else
+			warn("netfd %s", buf);
+		goto failure;
+	}
+
+	snprintf(tmp, sizeof(tmp), "%sdb.tar", PKG_RDB);
+
+	if ((fd[1] = open(tmp, MODERWCT, DEFFILEMODE)) < 0) {
+		warn("open %s", tmp);
+		goto failure;
+	}
+
+	if (uncomp(fd[0], fd[1]) < 0) {
+		if (z_errno)
+			warnx("invalid or incomplete deflate data");
+		else
+			warn("uncomp %s -> %s", buf, tmp);
+		goto failure;
+	}
+
+	lseek(fd[1], 0, SEEK_SET);
+	if (unarchive(fd[1]) < 0) {
+		warn("unarchive %s", tmp);
+		goto failure;
+	}
+
+	goto done;
+failure:
+	rval = 1;
+done:
+	if (fd[0] != -1)
+		close(fd[0]);
+	if (fd[1] != -1)
+		close(fd[1]);
+	return rval;
+}
+
 static void
 usage(void)
 {
-	fprintf(stderr,
-		"usage: %s [-LNR] command package ...",
-	        getprogname());
+	fprintf(stderr, "usage: %s [-LNR] command package ...", getprogname());
 	exit(1);
 }
 
@@ -331,6 +389,9 @@ main(int argc, char *argv[])
 		fn   = showrdeps;
 		type = LOCAL;
 		break;
+	case UPDATE:
+		fn   = update;
+		type = REMOTE;
 	default:
 		usage();
 	}
