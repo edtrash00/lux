@@ -273,14 +273,15 @@ update(Package *pkg)
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	snprintf(buf, sizeof(buf), "%sdb.%s", PKG_RDB, PKG_FMT);
+	snprintf(buf, sizeof(buf), "%s%s%s", PKG_RDB, PKG_FDB, PKG_FMT);
 
 	if ((fd[0] = open(buf, MODERWCT, DEFFILEMODE)) < 0) {
 		warn("open %s", buf);
 		goto failure;
 	}
 
-	snprintf(tmp, sizeof(tmp), "%.*sdb.%s", URL_MAX, PKG_SRC, PKG_FMT);
+	snprintf(tmp, sizeof(tmp), "%.*s%s%s",
+	         URL_MAX, PKG_SRC, PKG_FDB, PKG_FMT);
 
 	if (netfd(tmp, fd[0], NULL) < 0) {
 		if (fetchLastErrCode)
@@ -290,7 +291,7 @@ update(Package *pkg)
 		goto failure;
 	}
 
-	snprintf(tmp, sizeof(tmp), "%sdb.tar", PKG_RDB);
+	snprintf(tmp, sizeof(tmp), "%s%s.tar", PKG_RDB, PKG_FDB);
 
 	if ((fd[1] = open(tmp, MODERWCT, DEFFILEMODE)) < 0) {
 		warn("open %s", tmp);
