@@ -27,7 +27,7 @@ db_open(const char *file)
 	struct node **np;
 	ssize_t len;
 	off_t *op;
-	char **sp, *p, buf[BUFSIZ];
+	char **sp, *p, buf[LINE_MAX];
 
 	if (!(fp = fopen(file, "r")))
 		goto failure;
