@@ -265,7 +265,7 @@ showrdeps(Package *pkg)
 }
 
 static int
-update(Package *pkg)
+update(void)
 {
 	int fd[2], rval;
 	char buf[PATH_MAX], tmp[PATH_MAX];
@@ -391,8 +391,8 @@ main(int argc, char *argv[])
 		type = LOCAL;
 		break;
 	case UPDATE:
-		fn   = update;
-		type = REMOTE;
+		rval = update();
+		exit(rval);
 	default:
 		usage();
 	}
