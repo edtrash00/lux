@@ -77,6 +77,14 @@ $(LIBFETCH): $(LIBFETCHOBJ)
 	$(RANLIB) $@
 
 # USER ACTIONS
+install:
+	install -dm 755 $(DESTDIR)/$(PREFIX)/bin
+	install -csm 755 $(BIN) $(DESTDIR)/$(PREFIX)/bin
+
+install-man:
+	install -dm 755 $(DESTDIR)/$(MANPREFIX)/man1
+	install -cm 644 $(MAN) $(DESTDIR)/$(MANPREFIX)/man1
+
 clean:
 	rm -f $(BIN) $(OBJ) $(LIB)
 	rm -f lib/fetch/*err.h
