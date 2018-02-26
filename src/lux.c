@@ -129,6 +129,12 @@ explode(Package *pkg)
 		goto failure;
 	}
 
+	/* unarchive acts locally */
+	if (chdir(buf[0]) < 0) {
+		warn("chdir %s", buf[0]);
+		goto failure;
+	}
+
 	snprintf(buf[0], sizeof(buf[0]), "%s%s#%s%s",
 	         PKG_TMP, pkg->name, pkg->version, PKG_FMT);
 	snprintf(buf[1], sizeof(buf[1]), "%s%s#%s.tar",

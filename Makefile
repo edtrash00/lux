@@ -18,6 +18,9 @@ HDR=\
 BIN=\
 	src/lux
 
+MAN=\
+	man/lux.1
+
 # LIB SOURCE
 LIBFETCHSRC=\
 	lib/fetch/common.c\
