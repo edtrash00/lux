@@ -367,8 +367,7 @@ main(int argc, char *argv[])
 	if (argc < 2)
 		usage();
 
-	hash = strtohash(*argv);
-	switch (hash) {
+	switch ((hash = strtohash(*argv))) {
 	case ADD:
 		fn   = add;
 		type = REMOTE;
@@ -409,9 +408,6 @@ main(int argc, char *argv[])
 
 	argc--, argv++;
 	type = atype ? atype : type;
-
-	if (!argc)
-		usage();
 
 	for (; *argv; argc--, argv++) {
 		snprintf(buf[0], sizeof(buf[0]), "%s/%s", GETDB(type), *argv);
