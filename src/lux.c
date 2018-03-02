@@ -332,7 +332,8 @@ done:
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: %s [-LNR] command package ...", getprogname());
+	fprintf(stderr, "usage: %s [-LNR] command package ...\n",
+	        getprogname());
 	exit(1);
 }
 
@@ -362,6 +363,9 @@ main(int argc, char *argv[])
 	default:
 		usage();
 	} ARGEND
+
+	if (argc < 2)
+		usage();
 
 	hash = strtohash(*argv);
 	switch (hash) {
