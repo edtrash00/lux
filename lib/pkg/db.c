@@ -58,6 +58,9 @@ db_open(const char *file)
 		if ((p = strchr(buf, ':')))
 			*p++ = '\0';
 
+		if (!(*p))
+			continue;
+
 		switch (strtohash(buf)) {
 		case NAME:
 			sp = &pkg->name;
@@ -92,6 +95,8 @@ db_open(const char *file)
 		case FLAG:
 			np = &pkg->flags;
 			break;
+		default:
+			continue;
 		}
 
 		if (op && (*op = stoll(p, 0, UINT_MAX, 10)) < 0)
