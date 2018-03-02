@@ -132,7 +132,7 @@ unarchive(int tarfd)
 			    (minor = stoll(head->minor, 0, LONG_MAX, 8)) < 0)
 				goto failure;
 			type = (head->type == CHRTYPE) ? S_IFCHR :
-			       (head->type == BLKSIZE) ? S_IFBLK : S_IFIFO;
+			       (head->type == BLKTYPE) ? S_IFBLK : S_IFIFO;
 			if (mknod(fname, type|mode, makedev(major, minor)) < 0)
 				goto failure;
 			break;
