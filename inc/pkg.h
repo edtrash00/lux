@@ -43,6 +43,9 @@ int copy(const char *, const char *);
 int move(const char *, const char *);
 int remove(const char *);
 
+/* mode.c */
+mode_t strtomode(const char *, mode_t);
+
 /* net.c */
 int netfd(char *, int, const char *);
 
@@ -55,4 +58,4 @@ int pushnode(struct node **, struct node *);
 /* util.c */
 unsigned filetosum(int);
 unsigned strtohash(char *);
-size_t stoll(const char *, long long, long long, int);
+size_t strtobase(const char *, long long, long long, int);

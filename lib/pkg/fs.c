@@ -1,5 +1,6 @@
 #include <sys/stat.h>
 
+#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -17,18 +18,27 @@ copy(const char *src, const char *dest)
 	sf   = tf = -1;
 	rval =  0;
 
-	if ((sf = open(src, O_RDONLY, 0)) < 0)
+	if ((sf = open(src, O_RDONLY, 0)) < 0) {
+		warn("open %s", src);
 		goto failure;
+	}
 
-	if ((tf = open(dest, O_WRONLY | O_CREAT | O_EXCL, 644)) < 0)
+	if ((tf = open(dest, O_WRONLY | O_CREAT | O_EXCL, 644)) < 0) {
+		warn("open %s", dest);
 		goto failure;
+	}
 
-	while ((rf = read(sf, buf, sizeof(buf))) > 0)
-		if (write(tf, buf, rf) != rf)
+	while ((rf = read(sf, buf, sizeof(buf))) > 0) {
+		if (write(tf, buf, rf) != rf) {
+			warn("write %s", dest);
 			goto failure;
+		}
+	}
 
-	if (rf < 0)
+	if (rf < 0) {
+		warn("read %s", src);
 		goto failure;
+	}
 
 	goto done;
 failure:
@@ -47,18 +57,23 @@ move(const char *src, const char *dest)
 {
 	struct stat st;
 
-	if (stat(src, &st) < 0)
+	if (stat(src, &st) < 0) {
+		warn("stat %s", src);
 		return -1;
+	}
 
 	switch(st.st_mode & S_IFMT) {
 	case S_IFDIR:
-		if (mkdir(dest, st.st_mode) < 0
-		    && errno != EEXIST)
+		if (mkdir(dest, st.st_mode) < 0 && errno != EEXIST) {
+			warn("mkdir %s", dest);
 			return -1;
+		}
 		break;
 	default:
-		if (rename(src, dest) < 0)
+		if (rename(src, dest) < 0) {
+			warn("rename %s %s", src, dest);
 			return -1;
+		}
 		break;
 	}
 
@@ -70,16 +85,20 @@ remove(const char *path) {
 	struct stat st;
 	int (*fn)(const char *);
 
-	if (stat(path, &st) < 0)
+	if (stat(path, &st) < 0) {
+		warn("stat %s", path);
 		return -1;
+	}
 
 	if (S_ISDIR(st.st_mode))
 		fn = rmdir;
 	else
 		fn = unlink;
 
-	if (fn(path) < 0)
+	if (fn(path) < 0) {
+		warn("remove %s", path);
 		return -1;
+	}
 
 	return 0;
 }

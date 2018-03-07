@@ -1,3 +1,4 @@
+#include <err.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,11 +30,15 @@ db_open(const char *file)
 	off_t *op;
 	char **sp, *p, buf[LINE_MAX];
 
-	if (!(fp = fopen(file, "r")))
+	if (!(fp = fopen(file, "r"))) {
+		warn("fopen %s", file);
 		goto failure;
+	}
 
-	if (!(pkg = malloc(1 * sizeof(*pkg))))
+	if (!(pkg = malloc(1 * sizeof(*pkg)))) {
+		warn("malloc");
 		goto failure;
+	}
 
 	pkg->name        = NULL;
 	pkg->version     = NULL;
@@ -99,14 +104,18 @@ db_open(const char *file)
 			continue;
 		}
 
-		if (op && (*op = stoll(p, 0, UINT_MAX, 10)) < 0)
-			goto err;
+		if (op)
+			*op = strtobase(p, 0, UINT_MAX, 10);
 
-		if (sp && !(*sp = strdup(p)))
+		if (sp && !(*sp = strdup(p))) {
+			warn("strtodup");
 			goto err;
+		}
 
-		if (np && pushnode(np, addelement(p)) < 0)
+		if (np && pushnode(np, addelement(p)) < 0) {
+			warn("addelement %s", p);
 			goto err;
+		}
 	}
 
 	goto done;

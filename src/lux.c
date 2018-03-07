@@ -149,19 +149,12 @@ explode(Package *pkg)
 		goto failure;
 	}
 
-	if (uncomp(fd[0], fd[1]) < 0) {
-		if (z_errno)
-			warnx("invalid or incomplete deflate data");
-		else
-			warn("uncomp %s -> %s", buf[0], buf[1]);
+	if (uncomp(fd[0], fd[1]) < 0)
 		goto failure;
-	}
 
 	lseek(fd[1], 0, SEEK_SET);
-	if (unarchive(fd[1]) < 0) {
-		warn("unarchive %s", buf[1]);
+	if (unarchive(fd[1]) < 0)
 		goto failure;
-	}
 
 	goto done;
 failure:
@@ -200,13 +193,8 @@ fetch(Package *pkg)
 		}
 
 		fetchLastErrCode = 0;
-		if (netfd(url, fd[i], NULL) < 0) {
-			if (fetchLastErrCode)
-				warnx("netfd %s: %s", url, fetchLastErrString);
-			else
-				warn("netfd %s", tmp);
+		if (netfd(url, fd[i], NULL) < 0)
 			goto failure;
-		}
 	}
 
 	while ((rf = read(fd[1], buf, sizeof(buf))) > 0)
@@ -214,7 +202,7 @@ fetch(Package *pkg)
 	buf[fsize-1] = '\0';
 
 	lsum = filetosum(fd[0]);
-	rsum = stoll(buf, 0, SSIZE_MAX, 10);
+	rsum = strtobase(buf, 0, SSIZE_MAX, 10);
 
 	if (lsum != rsum) {
 		warnx("fetch %s: checksum mismatch", pkg->name);
@@ -289,13 +277,8 @@ update(void)
 	snprintf(tmp, sizeof(tmp), "%.*s%s%s",
 	         URL_MAX, PKG_SRC, PKG_FDB, PKG_FMT);
 
-	if (netfd(tmp, fd[0], NULL) < 0) {
-		if (fetchLastErrCode)
-			warnx("netfd %s: %s", tmp, fetchLastErrString);
-		else
-			warn("netfd %s", buf);
+	if (netfd(tmp, fd[0], NULL) < 0)
 		goto failure;
-	}
 
 	snprintf(tmp, sizeof(tmp), "%s%s.tar", PKG_RDB, PKG_FDB);
 
@@ -304,19 +287,12 @@ update(void)
 		goto failure;
 	}
 
-	if (uncomp(fd[0], fd[1]) < 0) {
-		if (z_errno)
-			warnx("invalid or incomplete deflate data");
-		else
-			warn("uncomp %s -> %s", buf, tmp);
+	if (uncomp(fd[0], fd[1]) < 0)
 		goto failure;
-	}
 
 	lseek(fd[1], 0, SEEK_SET);
-	if (unarchive(fd[1]) < 0) {
-		warn("unarchive %s", tmp);
+	if (unarchive(fd[1]) < 0)
 		goto failure;
-	}
 
 	goto done;
 failure:
@@ -413,8 +389,7 @@ main(int argc, char *argv[])
 		snprintf(buf[0], sizeof(buf[0]), "%s/%s", GETDB(type), *argv);
 		if (!(pkg = db_open(buf[0]))) {
 			if (errno == ENOMEM)
-				err(1, NULL);
-			warn("open_db %s", buf[0]);
+				exit(1);
 			rval = 1;
 			continue;
 		}
@@ -427,11 +402,11 @@ main(int argc, char *argv[])
 			snprintf(buf[1], sizeof(buf[1]), "%s/%s",
 			         GETDB(LOCAL), *argv);
 			if (copy(buf[0], buf[1]) < 0)
-				err(1, "copy %s -> %s", buf[0], buf[1]);
+				exit(1);
 			break;
 		case DEL:
 			if (remove(buf[0]) < 0)
-				err(1, "remove %s", buf[0]);
+				exit(1);
 			break;
 		}
 	}

@@ -1,3 +1,4 @@
+#include <err.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -114,7 +115,7 @@ strtohash(char *str)
 }
 
 ssize_t
-stoll(const char *str, long long min, long long max, int base)
+strtobase(const char *str, long long min, long long max, int base)
 {
 	char *end;
 	long long ll;
@@ -129,7 +130,7 @@ stoll(const char *str, long long min, long long max, int base)
 		errno = ERANGE;
 
 	if (errno)
-		return -1;
+		err(1, "strtobase %s", str);
 
 	return ll;
 }
