@@ -97,10 +97,10 @@ unarchive(int tarfd)
 
 		strncat(fname, head->name, sizeof(head->name));
 
-		mode  = strtomode(head->mode, ALLPERMS);
+		mode  = strtomode(head->mode, ACCESSPERMS);
 
 		snprintf(buf, sizeof(buf), "%s", fname);
-		if (mkdirp(dirname(buf), ALLPERMS, ALLPERMS) < 0)
+		if (mkdirp(dirname(buf), ACCESSPERMS, ACCESSPERMS) < 0)
 			goto failure;
 
 		switch (head->type) {
@@ -147,7 +147,6 @@ unarchive(int tarfd)
 		uid   = strtobase(head->uid, 0, LONG_MAX, 8);
 		mtime = strtobase(head->mtime, 0, LONG_MAX, 8);
 
-
 		if (fd != -1) {
 			for (; size > 0; size -= sizeof(blk)) {
 				if ((r = read(tarfd, blk, sizeof(blk))) < 0) {
@@ -168,7 +167,7 @@ unarchive(int tarfd)
 			warn("utimensat %s", fname);
 			goto failure;
 		}
-		if ((head->type == SYMTYPE)) {
+		if (head->type == SYMTYPE) {
 			if (!getuid() && lchown(fname, uid, gid)) {
 				warn("lchown %s", fname);
 				goto failure;
