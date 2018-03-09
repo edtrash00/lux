@@ -1,5 +1,6 @@
 #include <err.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -78,12 +79,15 @@ fgetline(char *buf, size_t bsize, FILE *stream)
 }
 
 /* crc32 */
-size_t
+unsigned
 filetosum(int fd)
 {
-	size_t fsize = 0, i, rf;
-	unsigned sum = 0;
+	size_t fsize, i, rf;
+	unsigned sum;
 	char buf[BUFSIZ];
+
+	fsize = 0;
+	sum   = 0;
 
 	while ((rf = read(fd, buf, sizeof(buf))) > 0) {
 		fsize += rf;
@@ -112,23 +116,23 @@ strtohash(char *str)
 	return hash;
 }
 
-ssize_t
-strtobase(const char *str, long long min, long long max, int base)
+intmax_t
+strtobase(const char *str, intmax_t min, intmax_t max, int base)
 {
+	intmax_t res;
 	char *end;
-	long long ll;
 
 	errno = 0;
-	ll = strtoll(str, &end, base);
+	res   = strtoimax(str, &end, base);
 
 	if (end == str || *end != '\0')
 		errno = EINVAL;
 
-	if (ll > max || ll < min)
+	if (res > max || res < min)
 		errno = ERANGE;
 
 	if (errno)
 		err(1, "strtobase %s", str);
 
-	return ll;
+	return res;
 }

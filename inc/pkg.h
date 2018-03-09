@@ -1,6 +1,7 @@
 #include <sys/types.h>
 
 #include <stdio.h>
+#include <inttypes.h>
 
 #include "arg.h"
 #include "config.h"
@@ -25,15 +26,13 @@ typedef struct {
 	char *description;
 } Package;
 
-extern int z_errno;
-
 /* ar.c */
 int uncomp(int, int);
 int unarchive(int);
 
 /* db.c */
 Package * db_open(const char *);
-void db_close(Package *);
+void      db_close(Package *);
 
 /* fgetline.c */
 ssize_t fgetline(char *, size_t, FILE *);
@@ -51,11 +50,11 @@ int netfd(char *, int, const char *);
 
 /* node.c */
 struct node * addelement(const void *);
-void freenode(struct node *);
+void          freenode(struct node *);
 struct node * popnode(struct node **);
-int pushnode(struct node **, struct node *);
+int           pushnode(struct node **, struct node *);
 
 /* util.c */
 unsigned filetosum(int);
 unsigned strtohash(char *);
-size_t strtobase(const char *, long long, long long, int);
+intmax_t strtobase(const char *, long long, long long, int);
