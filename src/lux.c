@@ -320,7 +320,7 @@ main(int argc, char *argv[])
 	unsigned hash;
 	int (*fn)(Package *);
 	int rval, type, atype;
-	char buf[2][PATH_MAX];
+	char buf[PATH_MAX];
 
 	atype = 0;
 	rval  = 0;
@@ -386,8 +386,8 @@ main(int argc, char *argv[])
 	type = atype ? atype : type;
 
 	for (; *argv; argc--, argv++) {
-		snprintf(buf[0], sizeof(buf[0]), "%s/%s", GETDB(type), *argv);
-		if (!(pkg = db_open(buf[0]))) {
+		snprintf(buf, sizeof(buf), "%s/%s", GETDB(type), *argv);
+		if (!(pkg = db_open(buf))) {
 			if (errno == ENOMEM)
 				exit(1);
 			rval = 1;
@@ -395,20 +395,6 @@ main(int argc, char *argv[])
 		}
 		rval |= fn(pkg);
 		db_close(pkg);
-
-		/* update database state */
-		switch (hash) {
-		case ADD:
-			snprintf(buf[1], sizeof(buf[1]), "%s/%s",
-			         GETDB(LOCAL), *argv);
-			if (copy(buf[0], buf[1]) < 0)
-				exit(1);
-			break;
-		case DEL:
-			if (remove(buf[0]) < 0)
-				exit(1);
-			break;
-		}
 	}
 
 	return rval;
