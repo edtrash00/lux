@@ -15,6 +15,13 @@
 #define GETDB(x) \
 ((x) == LOCAL ? PKG_LDB : (x) == REMOTE ? PKG_RDB : (x) == NONE ? "." : NULL)
 
+/* S  for snprintf
+ * SN for string concatenation */
+#define S(a, b, ...) \
+snprintf((a), sizeof((a)), (b), __VA_ARGS__)
+#define SN(a, b, c, ...) \
+snprintf((a)+(b), sizeof((a))-(b), (c), __VA_ARGS__)
+
 #define MODERWCT    (O_RDWR|O_CREAT|O_TRUNC)
 #define FILEMODE(a) (((a) == 0) ? MODERWCT : O_RDONLY)
 #define URL_MAX     (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
@@ -40,18 +47,15 @@ enum RTypes {
 static int
 pnode(struct node *np, int isfile, int putch)
 {
-	char *str, path[PATH_MAX];
+	size_t n;
+	char path[PATH_MAX];
 
+	n = isfile ? S(path, "%s", PKG_DIR) : 0;
 	for (; np; np = np->next) {
-		str = np->data;
 		if (putch++)
 			putchar(' ');
 
-		if (isfile)
-			snprintf(path, sizeof(path), "%s%s", PKG_DIR, str);
-		else
-			snprintf(path, sizeof(path), "%s", str);
-
+		SN(path, n, "%s", (char *)np->data);
 		printf("%s", path);
 	}
 
@@ -63,20 +67,20 @@ static int
 add(Package *pkg)
 {
 	struct node *np;
+	size_t n[2];
 	int i, rval;
 	char buf[2][PATH_MAX];
 
 	i    = 0;
 	rval = 0;
 
+	n[0] = S(buf[0], "%s%s#%s/", PKG_TMP, pkg->name, pkg->version);
+	n[1] = S(buf[1], "%s", PKG_DIR);
 	for (; i < 2; i++) {
 		np = i ? pkg->files : pkg->dirs;
 		for (; np; np = np->next) {
-			snprintf(buf[0], sizeof(buf[0]), "%s%s#%s/%s",
-			         PKG_TMP, pkg->name,
-			         pkg->version, (char *)np->data);
-			snprintf(buf[1], sizeof(buf[1]), "%s%s",
-			         PKG_DIR, (char *)np->data);
+			SN(buf[0], n[0], "%s", (char *)np->data);
+			SN(buf[1], n[1], "%s", (char *)np->data);
 			if (move(buf[0], buf[1]) < 0) {
 				warn("move %s -> %s", buf[0], buf[1]);
 				rval = 1;
@@ -91,17 +95,18 @@ static int
 del(Package *pkg)
 {
 	struct node *np;
+	size_t n;
 	int i, rval;
 	char buf[BUFSIZ];
 
 	i    = 0;
 	rval = 0;
 
+	n = S(buf, "%s", PKG_DIR);
 	for (; i < 2; i++) {
 		np = i ? pkg->dirs : pkg->files;
 		for (; np; np = np->next) {
-			snprintf(buf, sizeof(buf), "%s%s",
-			         PKG_DIR, (char *)np->data);
+			SN(buf, n, "%s", (char *)np->data);
 			if (remove(buf) < 0) {
 				warn("remove %s", buf);
 				rval = 1;
@@ -115,14 +120,14 @@ del(Package *pkg)
 static int
 explode(Package *pkg)
 {
+	size_t n;
 	int fd[2], rval;
 	char buf[2][PATH_MAX];
 
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	snprintf(buf[0], sizeof(buf[0]), "%s%s#%s",
-	         PKG_TMP, pkg->name, pkg->version);
+	n = S(buf[0], "%s%s#%s", PKG_TMP, pkg->name, pkg->version);
 
 	if (mkdir(buf[0], ACCESSPERMS) < 0) {
 		warn("mkdir %s", buf[0]);
@@ -135,10 +140,8 @@ explode(Package *pkg)
 		goto failure;
 	}
 
-	snprintf(buf[0], sizeof(buf[0]), "%s%s#%s%s",
-	         PKG_TMP, pkg->name, pkg->version, PKG_FMT);
-	snprintf(buf[1], sizeof(buf[1]), "%s%s#%s.tar",
-	         PKG_TMP, pkg->name, pkg->version);
+	S(buf[1], "%s.tar", buf[0]);
+	SN(buf[0], n, "%s", PKG_FMT);
 
 	if ((fd[0] = open(buf[0], O_RDONLY, 0)) < 0) {
 		warn("open %s", buf[0]);
@@ -170,6 +173,7 @@ done:
 static int
 fetch(Package *pkg)
 {
+	size_t n[3];
 	ssize_t rf, fsize;
 	int fd[2], i, rval;
 	unsigned int lsum, rsum;
@@ -181,11 +185,13 @@ fetch(Package *pkg)
 	i     = 0;
 	rval  = 0;
 
+	n[0] = S(file, "%s#%s", pkg->name, pkg->version);
+	n[1] = S(url, "%.*s", URL_MAX, PKG_SRC);
+	n[2] = S(tmp, "%s", PKG_TMP);
 	for (; i < 2; i++) {
-		snprintf(file, sizeof(file), "%s#%s%s",
-		         pkg->name, pkg->version, (i == 0) ? PKG_FMT : PKG_SIG);
-		snprintf(url, sizeof(url), "%.*s%s", URL_MAX, PKG_SRC, file);
-		snprintf(tmp, sizeof(tmp), "%s%s", PKG_TMP, file);
+		SN(file, n[0], "%s", i ? PKG_SIG : PKG_FMT);
+		SN(url, n[1], "%s", file);
+		SN(tmp, n[2], "%s", file);
 
 		if ((fd[i] = open(tmp, FILEMODE(i), DEFFILEMODE)) < 0) {
 			warn("open %s", tmp);
@@ -262,28 +268,27 @@ static int
 update(void)
 {
 	int fd[2], rval;
-	char buf[PATH_MAX], tmp[PATH_MAX];
+	char buf[PATH_MAX];
 
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	snprintf(buf, sizeof(buf), "%s%s%s", PKG_RDB, PKG_FDB, PKG_FMT);
+	S(buf, "%s%s%s", PKG_RDB, PKG_FDB, PKG_FMT);
 
 	if ((fd[0] = open(buf, MODERWCT, DEFFILEMODE)) < 0) {
 		warn("open %s", buf);
 		goto failure;
 	}
 
-	snprintf(tmp, sizeof(tmp), "%.*s%s%s",
-	         URL_MAX, PKG_SRC, PKG_FDB, PKG_FMT);
+	S(buf, "%.*s%s%s", URL_MAX, PKG_SRC, PKG_FDB, PKG_FMT);
 
-	if (netfd(tmp, fd[0], NULL) < 0)
+	if (netfd(buf, fd[0], NULL) < 0)
 		goto failure;
 
-	snprintf(tmp, sizeof(tmp), "%s%s.tar", PKG_RDB, PKG_FDB);
+	S(buf, "%s%s.tar", PKG_RDB, PKG_FDB);
 
-	if ((fd[1] = open(tmp, MODERWCT, DEFFILEMODE)) < 0) {
-		warn("open %s", tmp);
+	if ((fd[1] = open(buf, MODERWCT, DEFFILEMODE)) < 0) {
+		warn("open %s", buf);
 		goto failure;
 	}
 
@@ -317,9 +322,10 @@ int
 main(int argc, char *argv[])
 {
 	Package *pkg;
-	unsigned hash;
+	size_t n;
 	int (*fn)(Package *);
 	int rval, type, atype;
+	unsigned int hash;
 	char buf[PATH_MAX];
 
 	atype = 0;
@@ -340,7 +346,7 @@ main(int argc, char *argv[])
 		usage();
 	} ARGEND
 
-	if (argc < 2)
+	if (!argc)
 		usage();
 
 	switch ((hash = strtohash(*argv))) {
@@ -383,10 +389,10 @@ main(int argc, char *argv[])
 	}
 
 	argc--, argv++;
-	type = atype ? atype : type;
 
+	n = S(buf, "%s", GETDB(atype ? atype : type));
 	for (; *argv; argc--, argv++) {
-		snprintf(buf, sizeof(buf), "%s/%s", GETDB(type), *argv);
+		SN(buf, n, "%s", *argv);
 		if (!(pkg = db_open(buf))) {
 			if (errno == ENOMEM)
 				exit(1);
