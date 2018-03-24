@@ -39,9 +39,9 @@ enum Hash {
 };
 
 enum RTypes {
-	LOCAL,
-	REMOTE,
-	NONE
+	LOCAL  = 1,
+	REMOTE = 2,
+	NONE   = 3
 };
 
 static int
@@ -81,10 +81,8 @@ add(Package *pkg)
 		for (; np; np = np->next) {
 			SN(buf[0], n[0], "%s", (char *)np->data);
 			SN(buf[1], n[1], "%s", (char *)np->data);
-			if (move(buf[0], buf[1]) < 0) {
-				warn("move %s -> %s", buf[0], buf[1]);
+			if (move(buf[0], buf[1]) < 0)
 				rval = 1;
-			}
 		}
 	}
 

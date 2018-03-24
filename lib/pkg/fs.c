@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "pkg.h"
@@ -57,24 +58,17 @@ move(const char *src, const char *dest)
 {
 	struct stat st;
 
-	if (stat(src, &st) < 0) {
+	if (lstat(src, &st) < 0) {
 		warn("stat %s", src);
 		return -1;
 	}
 
-	switch(st.st_mode & S_IFMT) {
-	case S_IFDIR:
-		if (mkdir(dest, st.st_mode) < 0 && errno != EEXIST) {
-			warn("mkdir %s", dest);
+	if (S_ISDIR(st.st_mode)) {
+		if (mkdirp((char *)dest, st.st_mode, ACCESSPERMS) < 0)
 			return -1;
-		}
-		break;
-	default:
-		if (rename(src, dest) < 0) {
-			warn("rename %s %s", src, dest);
-			return -1;
-		}
-		break;
+	} else if (rename(src, dest) < 0) {
+		warn("rename %s %s", src, dest);
+		return -1;
 	}
 
 	return 0;
@@ -85,7 +79,7 @@ remove(const char *path) {
 	struct stat st;
 	int (*fn)(const char *);
 
-	if (stat(path, &st) < 0) {
+	if (lstat(path, &st) < 0) {
 		warn("stat %s", path);
 		return -1;
 	}

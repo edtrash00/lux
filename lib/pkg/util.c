@@ -1,8 +1,13 @@
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 static const unsigned long crctab[] = {
@@ -99,6 +104,33 @@ filetosum(int fd)
 		sum = (sum << 8) ^ crctab[(sum >> 24) ^ (i & 0337)];
 
 	return (~sum);
+}
+
+int
+mkdirp(char *path, mode_t dmode, mode_t mode)
+{
+	char *p, c;
+
+	c = 0;
+	p = path;
+
+	if ((path[0] == '.' || path[0] == '/') && path[1] == 0)
+		return 0;
+
+	for (; *p; *p = c) {
+		p += strspn(p, "/");
+		p += strcspn(p, "/");
+
+		c  = *p;
+		*p = '\0';
+
+		if (mkdir(path, c ? dmode : mode) < 0 && errno != EEXIST) {
+			warn("mkdir %s", path);
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 /* loselose (XOR) */

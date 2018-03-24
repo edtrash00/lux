@@ -1,5 +1,4 @@
 #include <sys/stat.h>
-#include <sys/types.h>
 
 #include <err.h>
 #include <errno.h>
@@ -47,33 +46,6 @@ struct header {
 	char minor[8];
 	char prefix[155];
 };
-
-static int
-mkdirp(char *path, mode_t dmode, mode_t mode)
-{
-	char *p, c;
-
-	c = 0;
-	p = path;
-
-	if (*path == '.' || *path == '/')
-		return 0;
-
-	for (; *p; *p = c) {
-		p += strspn(p, "/");
-		p += strcspn(p, "/");
-
-		c  = *p;
-		*p = '\0';
-
-		if (mkdir(path, c ? dmode : mode) < 0 && errno != EEXIST) {
-			warn("mkdir %s", path);
-			return -1;
-		}
-	}
-
-	return 0;
-}
 
 int
 unarchive(int tarfd)

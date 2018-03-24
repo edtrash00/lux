@@ -1,7 +1,7 @@
 #include <sys/types.h>
 
-#include <stdio.h>
 #include <inttypes.h>
+#include <stdio.h>
 
 #include "arg.h"
 #include "config.h"
@@ -56,5 +56,6 @@ int           pushnode(struct node **, struct node *);
 
 /* util.c */
 unsigned filetosum(int);
+int mkdirp(char *, mode_t, mode_t);
 unsigned strtohash(char *);
 intmax_t strtobase(const char *, long long, long long, int);

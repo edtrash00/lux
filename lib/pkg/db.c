@@ -51,7 +51,7 @@ db_open(const char *file)
 	pkg->flags       = NULL;
 
 	while ((len = fgetline(buf, sizeof(buf), fp)) != EOF) {
-		buf[len] = '\0'; /* remove trailing newline */
+		buf[len-1] = '\0'; /* remove trailing newline */
 		sp = NULL;
 		np = NULL;
 		op = NULL;
