@@ -500,7 +500,7 @@ http_parse_mtime(const char *p, time_t *mtime)
 	char locale[64], *r;
 	struct tm tm;
 
-	strncpy(locale, setlocale(LC_TIME, NULL), sizeof(locale));
+	snprintf(locale, sizeof(locale), "%s", setlocale(LC_TIME, NULL));
 	setlocale(LC_TIME, "C");
 	r = strptime(p, "%a, %d %b %Y %H:%M:%S GMT", &tm);
 	/* XXX should add support for date-2 and date-3 */
@@ -664,7 +664,8 @@ http_authorize(conn_t *conn, const char *hdr, const char *p)
 		if ((str = strdup(p)) == NULL)
 			return (-1); /* XXX */
 		user = str;
-		pwd = strchr(str, ':');
+		if ((pwd = strchr(str, ':')) == NULL)
+			return (-1);
 		*pwd++ = '\0';
 		r = http_basic_auth(conn, hdr, user, pwd);
 		free(str);
@@ -956,12 +957,14 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 		 */
 #if defined(TCP_NOPUSH) && !defined(__APPLE__)
 		val = 0;
-		setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
-			   sizeof(val));
+		if (setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
+		    sizeof(val) < 0)
+			goto ouch;
 #endif
 		val = 1;
-		setsockopt(conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
-			   sizeof(val));
+		if (setsockopt(conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
+		    sizeof(val)) < 0)
+			goto ouch;
 
 		/* get reply */
 		switch (http_get_reply(conn)) {
@@ -1458,7 +1461,8 @@ fetchListHTTP(struct url_list *ue, struct url *url, const char *pattern, const c
 			return fetchAppendURLList(ue, &cache->ue);
 		}
 
-		cache = malloc(sizeof(*cache));
+		if ((cache = malloc(sizeof(*cache))) == NULL)
+			return (-1);
 		fetchInitURLList(&cache->ue);
 		cache->location = fetchCopyURL(url);
 	}

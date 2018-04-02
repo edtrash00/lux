@@ -215,7 +215,8 @@ fetchStatFile(struct url *u, struct url_stat *us, const char *flags)
 		return -1;
 	}
 
-	rv = fetch_stat_file(fd, us);
+	if (us)
+		rv = fetch_stat_file(fd, us);
 	close(fd);
 
 	return rv;
