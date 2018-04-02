@@ -87,7 +87,8 @@ fgetline(char *buf, size_t bsize, FILE *stream)
 unsigned
 filetosum(int fd)
 {
-	size_t fsize, i, rf;
+	size_t fsize, i;
+	ssize_t rf;
 	unsigned sum;
 	char buf[BUFSIZ];
 

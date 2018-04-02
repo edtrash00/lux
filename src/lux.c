@@ -371,6 +371,7 @@ main(int argc, char *argv[])
 	case SHOWFS:
 		fn   = showfiles;
 		type = LOCAL;
+		break;
 	case SHOWMD:
 		fn   = showmdeps;
 		type = LOCAL;

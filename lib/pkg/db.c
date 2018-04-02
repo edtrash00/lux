@@ -63,7 +63,7 @@ db_open(const char *file)
 		if ((p = strchr(buf, ':')))
 			*p++ = '\0';
 
-		if (!(*p))
+		if (!p || !(*p))
 			continue;
 
 		switch (strtohash(buf)) {

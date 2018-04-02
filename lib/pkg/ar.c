@@ -165,9 +165,6 @@ unarchive(int tarfd)
 failure:
 	rval = -1;
 done:
-	if (fd != -1)
-		close(fd);
-
 	return rval;
 }
 
