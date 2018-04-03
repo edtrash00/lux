@@ -196,7 +196,6 @@ fetch(Package *pkg)
 			goto failure;
 		}
 
-		fetchLastErrCode = 0;
 		if (netfd(url, fd[i], NULL) < 0)
 			goto failure;
 	}

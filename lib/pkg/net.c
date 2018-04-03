@@ -8,10 +8,15 @@ int
 netfd(char *URL, int fd, const char *flags)
 {
 	char buf[BUFSIZ];
-	int rval = 0;
+	int rval;
 	ssize_t readcnt;
-	struct fetchIO *f = NULL;
-	struct url *url = NULL;
+	struct fetchIO *f;
+	struct url *url;
+
+	f                = NULL;
+	fetchLastErrCode = 0;
+	url              = NULL;
+	rval             = 0;
 
 	if (!(url = fetchParseURL(URL))) {
 		warnx("fetchParseURL %s: %s", URL, fetchLastErrString);
