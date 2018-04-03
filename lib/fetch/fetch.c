@@ -127,7 +127,6 @@ fetchPut(struct url *URL, const char *flags)
 int
 fetchStat(struct url *URL, struct url_stat *us, const char *flags)
 {
-
 	if (us != NULL) {
 		us->size = -1;
 		us->atime = us->mtime = 0;

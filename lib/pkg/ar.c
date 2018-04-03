@@ -131,6 +131,7 @@ unarchive(int tarfd)
 				}
 			}
 			close(fd);
+			fd   = -1;
 		}
 
 		tms[0].tv_sec  = tms[1].tv_sec  = mtime;
@@ -165,6 +166,8 @@ unarchive(int tarfd)
 failure:
 	rval = -1;
 done:
+	if (fd != -1)
+		close(fd);
 	return rval;
 }
 

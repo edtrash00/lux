@@ -300,12 +300,12 @@ http_closefn(void *v)
 		int val;
 
 		val = 0;
-		setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
-			   sizeof(val));
-			  fetch_cache_put(io->conn, fetch_close);
+		(void)setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
+		    sizeof(val));
+		fetch_cache_put(io->conn, fetch_close);
 #if defined(TCP_NOPUSH) && !defined(__APPLE__)
 		val = 1;
-		setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
+		(void)setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
 		    sizeof(val));
 #endif
 	} else {
@@ -664,8 +664,10 @@ http_authorize(conn_t *conn, const char *hdr, const char *p)
 		if ((str = strdup(p)) == NULL)
 			return (-1); /* XXX */
 		user = str;
-		if ((pwd = strchr(str, ':')) == NULL)
+		if ((pwd = strchr(str, ':')) == NULL) {
+			free(str);
 			return (-1);
+		}
 		*pwd++ = '\0';
 		r = http_basic_auth(conn, hdr, user, pwd);
 		free(str);
@@ -757,7 +759,8 @@ http_connect(struct url *URL, struct url *purl, const char *flags, int *cached)
 
 #if defined(TCP_NOPUSH) && !defined(__APPLE__)
 	val = 1;
-	setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val, sizeof(val));
+	(void)setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
+	    sizeof(val))
 #endif
 
 	return (conn);
@@ -957,14 +960,12 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 		 */
 #if defined(TCP_NOPUSH) && !defined(__APPLE__)
 		val = 0;
-		if (setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
-		    sizeof(val) < 0)
-			goto ouch;
+		(void)setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
+		    sizeof(val));
 #endif
 		val = 1;
-		if (setsockopt(conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
-		    sizeof(val)) < 0)
-			goto ouch;
+		(void)setsockopt(conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
+		    sizeof(val));
 
 		/* get reply */
 		switch (http_get_reply(conn)) {
