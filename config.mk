@@ -8,4 +8,5 @@ LDFLAGS  = -g
 LDLIBS   = -lz -lssl -lcrypto
 
 # PATHS
-PREFIX = /usr/local
+PREFIX    = /usr/local
+MANPREFIX = $(PREFIX)/share/man

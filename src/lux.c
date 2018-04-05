@@ -33,6 +33,7 @@ enum Hash {
 	FETCH   = 124, /* fetch      */
 	INFO    = 14,  /* info       */
 	SHOWFS  = 91,  /* show-files */
+	SHOWFL  = 81,  /* show-flags */
 	SHOWMD  = 94,  /* show-mdeps */
 	SHOWRD  = 53,  /* show-rdeps */
 	UPDATE  = 17   /* update     */
@@ -248,6 +249,13 @@ showfiles(Package *pkg)
 }
 
 static int
+showflags(Package *pkg)
+{
+	pnode(pkg->flags, 0, 0);
+	return 0;
+}
+
+static int
 showmdeps(Package *pkg)
 {
 	pnode(pkg->mdeps, 0, 0);
@@ -371,6 +379,9 @@ main(int argc, char *argv[])
 		fn   = showfiles;
 		type = LOCAL;
 		break;
+	case SHOWFL:
+		fn   = showflags;
+		type = LOCAL;
 	case SHOWMD:
 		fn   = showmdeps;
 		type = LOCAL;
