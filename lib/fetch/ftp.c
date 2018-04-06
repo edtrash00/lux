@@ -596,7 +596,7 @@ ftp_writefn(void *v, const void *buf, size_t len)
 static int
 ftp_disconnect(conn_t *conn)
 {
-	ftp_cmd(conn, "QUIT\r\n");
+	(void)ftp_cmd(conn, "QUIT\r\n");
 	return fetch_close(conn);
 }
 
@@ -803,7 +803,6 @@ retry_mode:
 			}
 			break;
 		default:
-			e = FTP_PROTOCOL_ERROR; /* XXX: error code should be prepared */
 			break;
 		}
 

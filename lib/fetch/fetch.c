@@ -400,7 +400,6 @@ fetchParseURL(const char *URL)
 			goto ouch;
 		}
 		URL += 2;
-		p = URL;
 		goto find_user;
 	}
 	if (strncmp(URL, "ftp:", 4) == 0) {
@@ -412,7 +411,6 @@ fetchParseURL(const char *URL)
 			goto ouch;
 		}
 		URL += 2;
-		p = URL;
 		goto find_user;
 	}
 
