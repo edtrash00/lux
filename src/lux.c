@@ -382,6 +382,7 @@ main(int argc, char *argv[])
 	case SHOWFL:
 		fn   = showflags;
 		type = LOCAL;
+		break;
 	case SHOWMD:
 		fn   = showmdeps;
 		type = LOCAL;
