@@ -1,4 +1,5 @@
 # Lux - Package Manager
+[![Build Status](https://travis-ci.org/eltanin-os/lux.svg?branch=master)](https://travis-ci.org/eltanin-os/lux) [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/14072.svg)](https://scan.coverity.com/projects/eltanin-os-lux)
 
 It's a lightweight and simple package manager for unix-systems
 
