@@ -7,17 +7,17 @@
 #include "pkg.h"
 
 enum {
-	NAME        = 7,   /* name        */
-	VERSION     = 122, /* version     */
-	LICENSE     = 123, /* license     */
-	DESCRIPTION = 102, /* description */
-	SIZE        = 5,   /* size        */
-	PKGSIZE     = 121, /* pkgsize     */
-	RUNDEP      = 53,  /* run-dep     */
-	MAKEDEP     = 94,  /* make-dep    */
-	DIRECTORY   = 127, /* dir         */
-	AFILE       = 6,   /* file        */
-	FLAG        = 12   /* flag        */
+	NAME        = 31371, /* name        */
+	VERSION     = 7384,  /* version     */
+	LICENSE     = 33857, /* license     */
+	DESCRIPTION = 33788, /* description */
+	SIZE        = 57345, /* size        */
+	PKGSIZE     = 52173, /* pkgsize     */
+	RUNDEP      = 30157, /* run-dep     */
+	MAKEDEP     = 22448, /* make-dep    */
+	DIRECTORY   = 33933, /* dir         */
+	AFILE       = 62844, /* file        */
+	FLAG        = 65388  /* flag        */
 };
 
 Package *

@@ -27,16 +27,16 @@ snprintf((a)+(b), sizeof((a))-(b), (c), __VA_ARGS__)
 #define URL_MAX     (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
 
 enum Hash {
-	ADD     = 97,  /* add        */
-	DEL     = 109, /* del        */
-	EXPLODE = 111, /* explode    */
-	FETCH   = 124, /* fetch      */
-	INFO    = 14,  /* info       */
-	SHOWFS  = 91,  /* show-files */
-	SHOWFL  = 81,  /* show-flags */
-	SHOWMD  = 94,  /* show-mdeps */
-	SHOWRD  = 53,  /* show-rdeps */
-	UPDATE  = 17   /* update     */
+	ADD     = 30881, /* add        */
+	DEL     = 33803, /* del        */
+	EXPLODE = 63713, /* explode    */
+	FETCH   = 1722,  /* fetch      */
+	INFO    = 25774, /* info       */
+	SHOWFS  = 47015, /* show-files */
+	SHOWFL  = 60343, /* show-flags */
+	SHOWMD  = 64865, /* show-mdeps */
+	SHOWRD  = 29414, /* show-rdeps */
+	UPDATE  = 14537  /* update     */
 };
 
 enum RTypes {

@@ -134,17 +134,17 @@ mkdirp(char *path, mode_t dmode, mode_t mode)
 	return 0;
 }
 
-/* loselose (XOR) */
+/* sdbm (modified) */
 unsigned
 strtohash(char *str)
 {
-	unsigned hash;
 	int ch;
+	unsigned hash;
 
 	hash = 0;
 
 	while ((ch = *str++))
-		hash ^= ch;
+		hash = (ch + (hash << 5) + (hash << 16) - hash) & 0xFFFF;
 
 	return hash;
 }
