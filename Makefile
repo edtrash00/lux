@@ -94,4 +94,4 @@ clean:
 	rm -f lib/fetch/*err.h
 
 .PHONY:
-	all clean
+	all install install-man clean

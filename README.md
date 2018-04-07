@@ -10,7 +10,7 @@ It's a lightweight and simple package manager for unix-systems
 * Plain text database
 * Single repository
 * Single architecture
-* Support HTTP and FTP
+* Support HTTP(S) and FTP
 
 #### Building
 ```
