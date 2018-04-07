@@ -31,14 +31,14 @@ enum Hash {
 	DEL     = 33803, /* del               */
 	EXPLODE = 63713, /* explode           */
 	FETCH   = 1722,  /* fetch             */
-	SHOWDSC = 56620, /* show-description  */
-	SHOWFLS = 47015, /* show-files        */
-	SHOWFLG = 60343, /* show-flags        */
-	SHOWLCS = 62833, /* show-license      */
-	SHOWMDP = 64865, /* show-mdeps        */
-	SHOWNAM = 5979,  /* show-name         */
-	SHOWRDP = 29414, /* show-rdeps        */
-	SHOWVER = 36360, /* show-version      */
+	SDESC   = 56620, /* show-description  */
+	SFILES  = 47015, /* show-files        */
+	SFLAGS  = 60343, /* show-flags        */
+	SLIC    = 62833, /* show-license      */
+	SMDEPS  = 64865, /* show-mdeps        */
+	SNAME   = 5979,  /* show-name         */
+	SRDEPS  = 29414, /* show-rdeps        */
+	SVER    = 36360, /* show-version      */
 	UPDATE  = 14537  /* update            */
 };
 
@@ -233,14 +233,14 @@ done:
 }
 
 static int
-showdesc(Package *pkg)
+show_desc(Package *pkg)
 {
 	puts(pkg->description);
 	return 0;
 }
 
 static int
-showfiles(Package *pkg)
+show_files(Package *pkg)
 {
 	pnode(pkg->dirs,  1, 0);
 	pnode(pkg->files, 1, 1);
@@ -248,42 +248,42 @@ showfiles(Package *pkg)
 }
 
 static int
-showflags(Package *pkg)
+show_flags(Package *pkg)
 {
 	pnode(pkg->flags, 0, 0);
 	return 0;
 }
 
 static int
-showlicense(Package *pkg)
+show_lic(Package *pkg)
 {
 	puts(pkg->license);
 	return 0;
 }
 
 static int
-showmdeps(Package *pkg)
+show_mdeps(Package *pkg)
 {
 	pnode(pkg->mdeps, 0, 0);
 	return 0;
 }
 
 static int
-showname(Package *pkg)
+show_name(Package *pkg)
 {
 	puts(pkg->name);
 	return 0;
 }
 
 static int
-showrdeps(Package *pkg)
+show_rdeps(Package *pkg)
 {
 	pnode(pkg->rdeps, 0, 0);
 	return 0;
 }
 
 static int
-showversion(Package *pkg)
+show_ver(Package *pkg)
 {
 	puts(pkg->version);
 	return 0;
@@ -391,36 +391,36 @@ main(int argc, char *argv[])
 		fn   = fetch;
 		type = REMOTE;
 		break;
-	case SHOWDSC:
-		fn   = showdesc;
+	case SDESC:
+		fn   = show_desc;
 		type = LOCAL;
 		break;
-	case SHOWFLS:
-		fn   = showfiles;
+	case SFILES:
+		fn   = show_files;
 		type = LOCAL;
 		break;
-	case SHOWFLG:
-		fn   = showflags;
+	case SFLAGS:
+		fn   = show_flags;
 		type = LOCAL;
 		break;
-	case SHOWLCS:
-		fn   = showlicense;
+	case SLIC:
+		fn   = show_lic;
 		type = LOCAL;
 		break;
-	case SHOWMDP:
-		fn   = showmdeps;
+	case SMDEPS:
+		fn   = show_mdeps;
 		type = LOCAL;
 		break;
-	case SHOWNAM:
-		fn   = showname;
+	case SNAME:
+		fn   = show_name;
 		type = LOCAL;
 		break;
-	case SHOWRDP:
-		fn   = showrdeps;
+	case SRDEPS:
+		fn   = show_rdeps;
 		type = LOCAL;
 		break;
-	case SHOWVER:
-		fn   = showversion;
+	case SVER:
+		fn   = show_ver;
 		type = LOCAL;
 		break;
 	case UPDATE:
