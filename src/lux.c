@@ -27,16 +27,19 @@ snprintf((a)+(b), sizeof((a))-(b), (c), __VA_ARGS__)
 #define URL_MAX     (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
 
 enum Hash {
-	ADD     = 30881, /* add        */
-	DEL     = 33803, /* del        */
-	EXPLODE = 63713, /* explode    */
-	FETCH   = 1722,  /* fetch      */
-	INFO    = 25774, /* info       */
-	SHOWFS  = 47015, /* show-files */
-	SHOWFL  = 60343, /* show-flags */
-	SHOWMD  = 64865, /* show-mdeps */
-	SHOWRD  = 29414, /* show-rdeps */
-	UPDATE  = 14537  /* update     */
+	ADD     = 30881, /* add               */
+	DEL     = 33803, /* del               */
+	EXPLODE = 63713, /* explode           */
+	FETCH   = 1722,  /* fetch             */
+	SHOWDSC = 56620, /* show-description  */
+	SHOWFLS = 47015, /* show-files        */
+	SHOWFLG = 60343, /* show-flags        */
+	SHOWLCS = 62833, /* show-license      */
+	SHOWMDP = 64865, /* show-mdeps        */
+	SHOWNAM = 5979,  /* show-name         */
+	SHOWRDP = 29414, /* show-rdeps        */
+	SHOWVER = 36360, /* show-version      */
+	UPDATE  = 14537  /* update            */
 };
 
 enum RTypes {
@@ -230,13 +233,9 @@ done:
 }
 
 static int
-info(Package *pkg)
+showdesc(Package *pkg)
 {
-	printf("Name:        %s\n"
-	       "Version:     %s\n"
-	       "License:     %s\n"
-	       "Description: %s\n",
-	       pkg->name, pkg->version, pkg->license, pkg->description);
+	puts(pkg->description);
 	return 0;
 }
 
@@ -256,6 +255,13 @@ showflags(Package *pkg)
 }
 
 static int
+showlicense(Package *pkg)
+{
+	puts(pkg->license);
+	return 0;
+}
+
+static int
 showmdeps(Package *pkg)
 {
 	pnode(pkg->mdeps, 0, 0);
@@ -263,9 +269,23 @@ showmdeps(Package *pkg)
 }
 
 static int
+showname(Package *pkg)
+{
+	puts(pkg->name);
+	return 0;
+}
+
+static int
 showrdeps(Package *pkg)
 {
 	pnode(pkg->rdeps, 0, 0);
+	return 0;
+}
+
+static int
+showversion(Package *pkg)
+{
+	puts(pkg->version);
 	return 0;
 }
 
@@ -371,24 +391,36 @@ main(int argc, char *argv[])
 		fn   = fetch;
 		type = REMOTE;
 		break;
-	case INFO:
-		fn   = info;
+	case SHOWDSC:
+		fn   = showdesc;
 		type = LOCAL;
 		break;
-	case SHOWFS:
+	case SHOWFLS:
 		fn   = showfiles;
 		type = LOCAL;
 		break;
-	case SHOWFL:
+	case SHOWFLG:
 		fn   = showflags;
 		type = LOCAL;
 		break;
-	case SHOWMD:
+	case SHOWLCS:
+		fn   = showlicense;
+		type = LOCAL;
+		break;
+	case SHOWMDP:
 		fn   = showmdeps;
 		type = LOCAL;
 		break;
-	case SHOWRD:
+	case SHOWNAM:
+		fn   = showname;
+		type = LOCAL;
+		break;
+	case SHOWRDP:
 		fn   = showrdeps;
+		type = LOCAL;
+		break;
+	case SHOWVER:
+		fn   = showversion;
 		type = LOCAL;
 		break;
 	case UPDATE:
