@@ -31,6 +31,7 @@ enum Hash {
 	DEL     = 33803, /* del               */
 	EXPLODE = 63713, /* explode           */
 	FETCH   = 1722,  /* fetch             */
+	REG     = 11939, /* register          */
 	SDESC   = 56620, /* show-description  */
 	SFILES  = 47015, /* show-files        */
 	SFLAGS  = 60343, /* show-flags        */
@@ -39,6 +40,7 @@ enum Hash {
 	SNAME   = 5979,  /* show-name         */
 	SRDEPS  = 29414, /* show-rdeps        */
 	SVER    = 36360, /* show-version      */
+	UNREG   = 37948, /* unregister        */
 	UPDATE  = 14537  /* update            */
 };
 
@@ -233,6 +235,18 @@ done:
 }
 
 static int
+regpkg(Package *pkg)
+{
+	int rval;
+	char buf[PATH_MAX];
+
+	S(buf, "%s%s", GETDB(LOCAL), pkg->name);
+	rval = copy(pkg->path, buf);
+
+	return (rval < 0);
+}
+
+static int
 show_desc(Package *pkg)
 {
 	puts(pkg->description);
@@ -287,6 +301,14 @@ show_ver(Package *pkg)
 {
 	puts(pkg->version);
 	return 0;
+}
+
+static int
+unregpkg(Package *pkg)
+{
+	int rval;
+	rval = remove(pkg->path);
+	return (rval < 0);
 }
 
 static int
@@ -391,6 +413,10 @@ main(int argc, char *argv[])
 		fn   = fetch;
 		type = REMOTE;
 		break;
+	case REG:
+		fn   = regpkg;
+		type = REMOTE;
+		break;
 	case SDESC:
 		fn   = show_desc;
 		type = LOCAL;
@@ -421,6 +447,10 @@ main(int argc, char *argv[])
 		break;
 	case SVER:
 		fn   = show_ver;
+		type = LOCAL;
+		break;
+	case UNREG:
+		fn   = unregpkg;
 		type = LOCAL;
 		break;
 	case UPDATE:

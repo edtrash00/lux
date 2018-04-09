@@ -40,6 +40,11 @@ db_open(const char *file)
 		goto failure;
 	}
 
+	if (!(pkg->path = strdup(file))) {
+		warn("strdup");
+		goto failure;
+	}
+
 	pkg->name        = NULL;
 	pkg->version     = NULL;
 	pkg->license     = NULL;
@@ -136,6 +141,7 @@ db_close(Package *pkg) {
 	free(pkg->version);
 	free(pkg->license);
 	free(pkg->description);
+	free(pkg->path);
 
 	while (pkg->rdeps)
 		freenode(popnode(&pkg->rdeps));

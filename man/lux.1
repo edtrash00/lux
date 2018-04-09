@@ -26,7 +26,7 @@ Use remote database for interaction.
 .El
 .Pp
 .Ss Commands:
-.Bl -tag -width show-files
+.Bl -tag -width show-description
 .It Cm add
 Install an exploded local package.
 .It Cm del
@@ -35,20 +35,29 @@ Remove a local package.
 Inflate and extract a remote package from cache.
 .It Cm fetch
 Fetch remote package to the cache.
-.It Cm info
-Write name, version, license and description
-from local package to the standard output.
+.It Cm register
+Register a remote package to the local database.
+.It Cm show-description
+Write description from local package to the standard output.
 .It Cm show-files
 Write directories and files from local package
 to the standard output.
 .It Cm show-flags
 Write flags from local package to the standard output.
+.It Cm show-license
+Write license from local package to the standard output.
 .It Cm show-mdeps
 Write construction dependencies from local package
 to the standard output.
+.It Cm show-name
+Write name from local package to the standard output.
 .It Cm show-rdeps
 Write real time dependencies from local package
 to the standard output.
+.It Cm show-version
+Write version from local package to the standard output.
+.It Cm unregister
+Unregister a package from local database.
 .It Cm update
 Populate remote database.
 .El

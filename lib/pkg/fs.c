@@ -10,6 +10,50 @@
 #include "pkg.h"
 
 int
+copy(const char *src, const char *dest)
+{
+	ssize_t rf;
+	int sf, tf, rval;
+	char buf[BUFSIZ];
+
+	sf   = tf = -1;
+	rval =  0;
+
+	if ((sf = open(src, O_RDONLY, 0)) < 0) {
+		warn("open %s", src);
+		goto failure;
+	}
+
+	if ((tf = open(dest, O_WRONLY | O_CREAT | O_EXCL, 644)) < 0) {
+		warn("open %s", dest);
+		goto failure;
+	}
+
+	while ((rf = read(sf, buf, sizeof(buf))) > 0) {
+		if (write(tf, buf, rf) != rf) {
+			warn("write %s", dest);
+			goto failure;
+		}
+	}
+
+	if (rf < 0) {
+		warn("read %s", src);
+		goto failure;
+	}
+
+	goto done;
+failure:
+	rval = -1;
+done:
+	if (sf != -1)
+		close(sf);
+	if (tf != -1)
+		close(tf);
+
+	return rval;
+}
+
+int
 move(const char *src, const char *dest)
 {
 	struct stat st;

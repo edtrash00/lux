@@ -24,6 +24,7 @@ typedef struct {
 	char *version;
 	char *license;
 	char *description;
+	char *path;
 } Package;
 
 /* ar.c */
@@ -38,6 +39,7 @@ void      db_close(Package *);
 ssize_t fgetline(char *, size_t, FILE *);
 
 /* fs.c */
+int copy(const char *, const char *);
 int move(const char *, const char *);
 int remove(const char *);
 
