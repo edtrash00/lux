@@ -5,6 +5,6 @@
 
 #define PKG_SRC "url"
 #define PKG_FDB "remote.db"
-#define PKG_FMT ".tzz"
+#define PKG_FMT ".pkg.tzz"
 #define PKG_SIG ".sig"
 
