@@ -19,7 +19,6 @@ typedef struct {
 	struct node *mdeps;
 	struct node *rdeps;
 	off_t size;
-	off_t pkgsize;
 	char *name;
 	char *version;
 	char *license;

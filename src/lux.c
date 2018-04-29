@@ -177,49 +177,55 @@ done:
 static int
 fetch(Package *pkg)
 {
-	size_t n[3];
-	ssize_t rf, fsize;
+	ssize_t rf, fsize, size;
 	int fd[2], i, rval;
-	unsigned int lsum, rsum;
-	char url[PATH_MAX], file[NAME_MAX];
-	char buf[BUFSIZ], tmp[PATH_MAX];
+	unsigned n, lsum, rsum;
+	char *p;
+	char buf[LINE_MAX], tmp[PATH_MAX], file[NAME_MAX];
 
 	fd[0] = fd[1] = -1;
 	fsize = 0;
 	i     = 0;
 	rval  = 0;
 
-	n[0] = S(file, "%s#%s", pkg->name, pkg->version);
-	n[1] = S(url, "%.*s", URL_MAX, PKG_SRC);
-	n[2] = S(tmp, "%s", PKG_TMP);
+	n = S(file, "%s%s", pkg->name, pkg->version);
 	for (; i < 2; i++) {
-		SN(file, n[0], "%s", i ? PKG_SIG : PKG_FMT);
-		SN(url, n[1], "%s", file);
-		SN(tmp, n[2], "%s", file);
-
+		SN(file, n, "%s", i ? PKG_SIG : PKG_FMT);
+		S(tmp, "%s%s", PKG_TMP, file);
 		if ((fd[i] = open(tmp, FILEMODE(i), DEFFILEMODE)) < 0) {
 			warn("open %s", tmp);
 			goto failure;
 		}
 
-		if (netfd(url, fd[i], NULL) < 0)
+		S(tmp, "%.*s%s", URL_MAX, PKG_SRC, file);
+		if (netfd(tmp, fd[i], NULL) < 0)
 			goto failure;
 	}
 
 	while ((rf = read(fd[1], buf, sizeof(buf))) > 0)
 		fsize += rf;
+
 	buf[fsize-1] = '\0';
 
-	lsum = filetosum(fd[0]);
-	rsum = strtobase(buf, 0, SSIZE_MAX, 10);
+	if ((p = strchr(buf, ' ')))
+		*p++ = '\0';
 
-	if (lsum != rsum) {
-		warnx("fetch %s: checksum mismatch", pkg->name);
+	if (!p || !(*p)) {
+		warnx("fetch %s: checksum file in wrong format", pkg->name);
 		goto failure;
 	}
 
-	if (fsize != pkg->pkgsize) {
+	lsum = filetosum(fd[0]);
+	rsum = strtobase(buf, 0, UINT_MAX, 10);
+	size = strtobase(p, 0, UINT_MAX, 10);
+
+	if (fsize != size) {
 		warnx("fetch %s: size mismatch", pkg->name);
+		goto failure;
+	}
+
+	if (lsum != rsum) {
+		warnx("fetch %s: checksum mismatch", pkg->name);
 		goto failure;
 	}
 

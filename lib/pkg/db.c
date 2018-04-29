@@ -12,7 +12,6 @@ enum {
 	LICENSE     = 33857, /* license     */
 	DESCRIPTION = 33788, /* description */
 	SIZE        = 57345, /* size        */
-	PKGSIZE     = 52173, /* pkgsize     */
 	RUNDEP      = 30157, /* run-dep     */
 	MAKEDEP     = 22448, /* make-dep    */
 	DIRECTORY   = 33933, /* dir         */
@@ -86,9 +85,6 @@ db_open(const char *file)
 			break;
 		case SIZE:
 			op = &pkg->size;
-			break;
-		case PKGSIZE:
-			op = &pkg->pkgsize;
 			break;
 		case RUNDEP:
 			np = &pkg->rdeps;

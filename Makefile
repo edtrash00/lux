@@ -18,8 +18,11 @@ HDR=\
 BIN=\
 	src/lux
 
-MAN=\
+MAN1=\
 	man/lux.1
+
+MAN5=\
+	man/pkg_dbfile.5
 
 # LIB SOURCE
 LIBFETCHSRC=\
@@ -87,7 +90,9 @@ install:
 
 install-man:
 	install -dm 755 $(DESTDIR)/$(MANPREFIX)/man1
-	install -cm 644 $(MAN) $(DESTDIR)/$(MANPREFIX)/man1
+	install -dm 755 $(DESTDIR)/$(MANPREFIX)/man5
+	install -cm 644 $(MAN1) $(DESTDIR)/$(MANPREFIX)/man1
+	install -cm 644 $(MAN5) $(DESTDIR)/$(MANPREFIX)/man5
 
 clean:
 	rm -f $(BIN) $(OBJ) $(LIB)
