@@ -255,7 +255,9 @@ regpkg(Package *pkg)
 static int
 show_desc(Package *pkg)
 {
-	puts(pkg->description);
+	if (pkg->description)
+		puts(pkg->description);
+
 	return 0;
 }
 
@@ -277,7 +279,9 @@ show_flags(Package *pkg)
 static int
 show_lic(Package *pkg)
 {
-	puts(pkg->license);
+	if (pkg->license)
+		puts(pkg->license);
+
 	return 0;
 }
 
@@ -291,7 +295,9 @@ show_mdeps(Package *pkg)
 static int
 show_name(Package *pkg)
 {
-	puts(pkg->name);
+	if (pkg->name)
+		puts(pkg->name);
+
 	return 0;
 }
 
@@ -305,7 +311,9 @@ show_rdeps(Package *pkg)
 static int
 show_ver(Package *pkg)
 {
-	puts(pkg->version);
+	if (pkg->version)
+		puts(pkg->version);
+
 	return 0;
 }
 
