@@ -41,7 +41,7 @@ db_open(const char *file)
 
 	if (!(pkg->path = strdup(file))) {
 		warn("strdup");
-		goto failure;
+		goto err;
 	}
 
 	pkg->name        = NULL;
