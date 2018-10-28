@@ -177,9 +177,10 @@ done:
 static int
 fetch(Package *pkg)
 {
-	ssize_t rf, fsize;
+	ssize_t rf, fsize, size;
 	int fd[2], i, rval;
 	unsigned n, lsum, rsum;
+	char *p;
 	char buf[LINE_MAX], tmp[PATH_MAX], file[NAME_MAX];
 
 	fd[0] = fd[1] = -1;
@@ -209,10 +210,19 @@ fetch(Package *pkg)
 
 	buf[fsize-1] = '\0';
 
-	lsum = filetosum(fd[1], &fsize);
-	rsum = strtobase(buf, 0, UINT_MAX, 10);
+	if ((p = strchr(buf, ' ')))
+		*p++ = '\0';
 
-	if (fsize != pkg->size) {
+	if (!p || !(*p)) {
+		warnx("fetch %s: checksum file in wrong format", pkg->name);
+		goto failure;
+	}
+
+	lsum = filetosum(fd[1], &fsize);
+	rsum = strtobase(buf, 0, UINT_MAX,  10);
+	size = strtobase(p,   0, SSIZE_MAX, 10);
+
+	if (fsize != size) {
 		warnx("fetch %s: size mismatch", pkg->name);
 		goto failure;
 	}
