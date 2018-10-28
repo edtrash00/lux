@@ -334,7 +334,7 @@ update(void)
 		goto failure;
 	}
 
-	S(buf, "%.*s%s", URL_MAX, PKG_SRC, PKG_FDB);
+	S(buf, "%.*s%s", URL_MAX, PKG_SDB, PKG_FDB);
 
 	if (netfd(buf, fd[0], NULL) < 0)
 		goto failure;

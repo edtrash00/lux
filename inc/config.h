@@ -4,6 +4,7 @@
 #define PKG_TMP "/var/pkg/cache/"
 
 #define PKG_SRC "url"
+#define PKG_SDB "url"
 #define PKG_FDB "remote.db"
 #define PKG_FMT ".pkg.tzz"
 #define PKG_SIG ".sig"
