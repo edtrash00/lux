@@ -85,12 +85,12 @@ fgetline(char *buf, size_t bsize, FILE *stream)
 
 /* crc32 */
 unsigned
-filetosum(int fd)
+filetosum(int fd, ssize_t *sz)
 {
 	size_t fsize, i;
 	ssize_t rf;
 	unsigned sum;
-	char buf[BUFSIZ];
+	unsigned char buf[BUFSIZ];
 
 	fsize = 0;
 	sum   = 0;
@@ -101,8 +101,9 @@ filetosum(int fd)
 			sum = (sum << 8) ^ crctab[(sum >> 24) ^ buf[i]];
 	}
 
+	*sz = fsize;
 	for (i = fsize; i; i >>= 8)
-		sum = (sum << 8) ^ crctab[(sum >> 24) ^ (i & 0337)];
+		sum = (sum << 8) ^ crctab[(sum >> 24) ^ (i & 0xFF)];
 
 	return (~sum);
 }

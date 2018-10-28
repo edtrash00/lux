@@ -203,7 +203,12 @@ uncomp(int ifd, int ofd)
 		do {
 			strm.avail_out = sizeof(obuf);
 			strm.next_out  = obuf;
-			if ((zerr = inflate(&strm, Z_NO_FLUSH)) < 0) {
+
+			switch (zerr = inflate(&strm, Z_NO_FLUSH)) {
+			case Z_STREAM_ERROR:
+			case Z_NEED_DICT:
+			case Z_DATA_ERROR:
+			case Z_MEM_ERROR:
 				warnx("invalid or incomplete deflate data");
 				goto failure;
 			}

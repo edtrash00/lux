@@ -25,3 +25,7 @@ extern char *__progname;
 #ifndef MIN
 #define MIN(a, b) (((a) > (b)) ? (b) : (a))
 #endif
+
+#ifndef makedev
+#define makedev(a, b) ((dev_t)(((a)<<8) | (b)))
+#endif

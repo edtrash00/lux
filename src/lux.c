@@ -23,7 +23,6 @@ snprintf((a), sizeof((a)), (b), __VA_ARGS__)
 snprintf((a)+(b), sizeof((a))-(b), (c), __VA_ARGS__)
 
 #define MODERWCT    (O_RDWR|O_CREAT|O_TRUNC)
-#define FILEMODE(a) (((a) == 0) ? MODERWCT : O_RDONLY)
 #define URL_MAX     (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
 
 enum Hash {
@@ -151,6 +150,7 @@ explode(Package *pkg)
 		warn("open %s", buf[0]);
 		goto failure;
 	}
+
 	if ((fd[1] = open(buf[1], MODERWCT, DEFFILEMODE)) < 0) {
 		warn("open %s", buf[1]);
 		goto failure;
@@ -177,10 +177,9 @@ done:
 static int
 fetch(Package *pkg)
 {
-	ssize_t rf, fsize, size;
+	ssize_t rf, fsize;
 	int fd[2], i, rval;
 	unsigned n, lsum, rsum;
-	char *p;
 	char buf[LINE_MAX], tmp[PATH_MAX], file[NAME_MAX];
 
 	fd[0] = fd[1] = -1;
@@ -188,11 +187,11 @@ fetch(Package *pkg)
 	i     = 0;
 	rval  = 0;
 
-	n = S(file, "%s%s", pkg->name, pkg->version);
+	n = S(file, "%s#%s", pkg->name, pkg->version);
 	for (; i < 2; i++) {
-		SN(file, n, "%s", i ? PKG_SIG : PKG_FMT);
+		SN(file, n, "%s", (i == 0) ? PKG_SIG : PKG_FMT);
 		S(tmp, "%s%s", PKG_TMP, file);
-		if ((fd[i] = open(tmp, FILEMODE(i), DEFFILEMODE)) < 0) {
+		if ((fd[i] = open(tmp, MODERWCT, DEFFILEMODE)) < 0) {
 			warn("open %s", tmp);
 			goto failure;
 		}
@@ -202,24 +201,18 @@ fetch(Package *pkg)
 			goto failure;
 	}
 
-	while ((rf = read(fd[1], buf, sizeof(buf))) > 0)
+	lseek(fd[0], 0, SEEK_SET);
+	lseek(fd[1], 0, SEEK_SET);
+
+	while ((rf = read(fd[0], buf, sizeof(buf))) > 0)
 		fsize += rf;
 
 	buf[fsize-1] = '\0';
 
-	if ((p = strchr(buf, ' ')))
-		*p++ = '\0';
-
-	if (!p || !(*p)) {
-		warnx("fetch %s: checksum file in wrong format", pkg->name);
-		goto failure;
-	}
-
-	lsum = filetosum(fd[0]);
+	lsum = filetosum(fd[1], &fsize);
 	rsum = strtobase(buf, 0, UINT_MAX, 10);
-	size = strtobase(p, 0, UINT_MAX, 10);
 
-	if (fsize != size) {
+	if (fsize != pkg->size) {
 		warnx("fetch %s: size mismatch", pkg->name);
 		goto failure;
 	}
@@ -334,27 +327,34 @@ update(void)
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	S(buf, "%s%s%s", PKG_RDB, PKG_FDB, PKG_FMT);
+	S(buf, "%s%s", PKG_TMP, PKG_FDB);
 
 	if ((fd[0] = open(buf, MODERWCT, DEFFILEMODE)) < 0) {
 		warn("open %s", buf);
 		goto failure;
 	}
 
-	S(buf, "%.*s%s%s", URL_MAX, PKG_SRC, PKG_FDB, PKG_FMT);
+	S(buf, "%.*s%s", URL_MAX, PKG_SRC, PKG_FDB);
 
 	if (netfd(buf, fd[0], NULL) < 0)
 		goto failure;
 
-	S(buf, "%s%s.tar", PKG_RDB, PKG_FDB);
+	S(buf, "%s%s.tar", PKG_TMP, PKG_FDB);
 
 	if ((fd[1] = open(buf, MODERWCT, DEFFILEMODE)) < 0) {
 		warn("open %s", buf);
 		goto failure;
 	}
 
+	lseek(fd[0], 0, SEEK_SET);
 	if (uncomp(fd[0], fd[1]) < 0)
 		goto failure;
+
+	/* unarchive acts locally */
+	if (chdir(PKG_RDB) < 0) {
+		warn("chdir %s", PKG_RDB);
+		goto failure;
+	}
 
 	lseek(fd[1], 0, SEEK_SET);
 	if (unarchive(fd[1]) < 0)
@@ -383,10 +383,10 @@ int
 main(int argc, char *argv[])
 {
 	Package *pkg;
-	size_t n;
 	int (*fn)(Package *);
 	int rval, type, atype;
 	unsigned int hash;
+	char *dbp;
 	char buf[PATH_MAX];
 
 	atype = 0;
@@ -476,9 +476,9 @@ main(int argc, char *argv[])
 
 	argc--, argv++;
 
-	n = S(buf, "%s", GETDB(atype ? atype : type));
+	dbp = GETDB((atype == 0) ? type : atype);
 	for (; *argv; argc--, argv++) {
-		SN(buf, n, "%s", *argv);
+		S(buf, "%s%s", dbp, *argv);
 		if (!(pkg = db_open(buf))) {
 			if (errno == ENOMEM)
 				exit(1);
