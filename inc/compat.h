@@ -29,3 +29,9 @@ extern char *__progname;
 #ifndef makedev
 #define makedev(a, b) ((dev_t)(((a)<<8) | (b)))
 #endif
+
+#ifndef SHOW_NO_PB
+#define PBINIT()
+#define PBUPDATE(a, b) printf("\r%zd/%zd", a, b); fflush(stdout)
+#define PBEND()        putchar('\n')
+#endif
