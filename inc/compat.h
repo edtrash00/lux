@@ -34,4 +34,8 @@ extern char *__progname;
 #define PBINIT()
 #define PBUPDATE(a, b) printf("\r%zd/%zd", a, b); fflush(stdout)
 #define PBEND()        putchar('\n')
+#else
+#define PBINIT()
+#define PBUPDATE(a, b)
+#define PBEND()
 #endif
