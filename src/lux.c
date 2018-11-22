@@ -13,17 +13,10 @@
 #include "pkg.h"
 
 #define GETDB(x) \
-((x) == LOCAL ? PKG_LDB : (x) == REMOTE ? PKG_RDB : (x) == NONE ? "." : NULL)
+((x) == LOCAL ? PKG_LDB : (x) == REMOTE ? PKG_RDB : (x) == NONE ? "" : NULL)
+#define MODERWCT  (O_RDWR|O_CREAT|O_TRUNC)
 
-/* S  for snprintf
- * SN for string concatenation */
-#define S(a, b, ...) \
-snprintf((a), sizeof((a)), (b), __VA_ARGS__)
-#define SN(a, b, c, ...) \
-snprintf((a)+(b), sizeof((a))-(b), (c), __VA_ARGS__)
-
-#define MODERWCT    (O_RDWR|O_CREAT|O_TRUNC)
-#define URL_MAX     (URL_HOSTLEN + URL_SCHEMELEN + URL_USERLEN + URL_PWDLEN)
+#define freepool() stackpool.n = 0;
 
 enum Hash {
 	ADD     = 30881, /* add               */
@@ -49,20 +42,30 @@ enum RTypes {
 	NONE   = 3
 };
 
-static int
-pnode(struct node *np, int isfile, int putch)
-{
-	size_t n;
-	char path[PATH_MAX];
+#define POOLSIZE 65536
+#define PATHMAX  (POOLSIZE/2)
 
-	n = isfile ? S(path, "%s", PKG_DIR) : 0;
+static char buffer[POOLSIZE];
+static Membuf stackpool = { sizeof(buffer), 0, buffer };
+
+static int
+pnode(Node *np, int isfile, int putch)
+{
+	Membuf p;
+
+	membuf_strinit(&p, PATHMAX);
+
+	if (isfile)
+		membuf_strcat(&p, PKG_DIR);
+
 	for (; np; np = np->next) {
 		if (putch++)
 			putchar(' ');
-
-		SN(path, n, "%s", (char *)np->data);
-		printf("%s", path);
+		p.n -= membuf_strcat(&p, np->data);
+		fputs(p.p, stdout);
 	}
+
+	freepool();
 
 	return 1;
 }
@@ -71,25 +74,28 @@ pnode(struct node *np, int isfile, int putch)
 static int
 add(Package *pkg)
 {
-	struct node *np;
-	size_t n[2];
+	Membuf p1, p2;
+	Node *np;
 	int i, rval;
-	char buf[2][PATH_MAX];
 
 	i    = 0;
 	rval = 0;
 
-	n[0] = S(buf[0], "%s%s#%s/", PKG_TMP, pkg->name, pkg->version);
-	n[1] = S(buf[1], "%s", PKG_DIR);
+	membuf_strinit(&p1, PATHMAX);
+	membuf_strinit(&p2, PATHMAX);
+	membuf_vstrcat(&p1, PKG_TMP, pkg->name, "#", pkg->version, "/");
+	membuf_strcat(&p2, PKG_DIR);
 	for (; i < 2; i++) {
-		np = i ? pkg->files : pkg->dirs;
+		np = (i == 0) ? pkg->files : pkg->dirs;
 		for (; np; np = np->next) {
-			SN(buf[0], n[0], "%s", (char *)np->data);
-			SN(buf[1], n[1], "%s", (char *)np->data);
-			if (move(buf[0], buf[1]) < 0)
+			p1.n -= membuf_strcat(&p1, np->data);
+			p2.n -= membuf_strcat(&p2, np->data);
+			if (move(p1.p, p2.p) < 0)
 				rval = 1;
 		}
 	}
+
+	freepool();
 
 	return rval;
 }
@@ -97,25 +103,25 @@ add(Package *pkg)
 static int
 del(Package *pkg)
 {
-	struct node *np;
-	size_t n;
+	Membuf p;
+	Node *np;
 	int i, rval;
-	char buf[BUFSIZ];
 
 	i    = 0;
 	rval = 0;
 
-	n = S(buf, "%s", PKG_DIR);
+	membuf_strinit(&p, PATHMAX);
+	membuf_strcat(&p, PKG_DIR);
 	for (; i < 2; i++) {
-		np = i ? pkg->dirs : pkg->files;
+		np = (i == 0) ? pkg->dirs : pkg->files;
 		for (; np; np = np->next) {
-			SN(buf, n, "%s", (char *)np->data);
-			if (remove(buf) < 0) {
-				warn("remove %s", buf);
+			p.n -= membuf_strcat(&p, np->data);
+			if (remove(p.p) < 0)
 				rval = 1;
-			}
 		}
 	}
+
+	freepool();
 
 	return rval;
 }
@@ -123,36 +129,36 @@ del(Package *pkg)
 static int
 explode(Package *pkg)
 {
-	size_t n;
+	Membuf p1, p2;
 	int fd[2], rval;
-	char buf[2][PATH_MAX];
 
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	n = S(buf[0], "%s%s#%s", PKG_TMP, pkg->name, pkg->version);
+	membuf_strinit(&p1, PATHMAX);
+	membuf_vstrcat(&p1, PKG_TMP, pkg->name, "#", pkg->version);
 
-	if (mkdir(buf[0], ACCESSPERMS) < 0) {
-		warn("mkdir %s", buf[0]);
+	if (mkdir(p1.p, ACCESSPERMS) < 0) {
+		warn("mkdir %s", p1.p);
 		goto failure;
 	}
 
 	/* unarchive acts locally */
-	if (chdir(buf[0]) < 0) {
-		warn("chdir %s", buf[0]);
+	if (chdir(p1.p) < 0) {
+		warn("chdir %s", p1.p);
 		goto failure;
 	}
 
-	S(buf[1], "%s.tar", buf[0]);
-	SN(buf[0], n, "%s", PKG_FMT);
+	membuf_vstrcat(&p2, p1.p, ".ustar");
+	membuf_strcat(&p1, PKG_FMT);
 
-	if ((fd[0] = open(buf[0], O_RDONLY, 0)) < 0) {
-		warn("open %s", buf[0]);
+	if ((fd[0] = open(p1.p, O_RDONLY, 0)) < 0) {
+		warn("open %s", p1.p);
 		goto failure;
 	}
 
-	if ((fd[1] = open(buf[1], MODERWCT, DEFFILEMODE)) < 0) {
-		warn("open %s", buf[1]);
+	if ((fd[1] = open(p2.p, MODERWCT, DEFFILEMODE)) < 0) {
+		warn("open %s", p2.p);
 		goto failure;
 	}
 
@@ -171,34 +177,37 @@ done:
 		close(fd[0]);
 	if (fd[1] != -1)
 		close(fd[1]);
+	freepool();
 	return rval;
 }
 
 static int
 fetch(Package *pkg)
 {
+	Membuf tmp;
 	ssize_t rf, fsize, size;
 	int fd[2], i, rval;
-	unsigned n, lsum, rsum;
+	unsigned lsum, rsum;
+	char buf[LINE_MAX];
 	char *p;
-	char buf[LINE_MAX], tmp[PATH_MAX], file[NAME_MAX];
 
 	fd[0] = fd[1] = -1;
 	fsize = 0;
 	i     = 0;
 	rval  = 0;
 
-	n = S(file, "%s#%s", pkg->name, pkg->version);
+	membuf_strinit(&tmp, PATHMAX);
 	for (; i < 2; i++) {
-		SN(file, n, "%s", (i == 0) ? PKG_SIG : PKG_FMT);
-		S(tmp, "%s%s", PKG_TMP, file);
-		if ((fd[i] = open(tmp, MODERWCT, DEFFILEMODE)) < 0) {
-			warn("open %s", tmp);
+		tmp.n -= membuf_vstrcat(&tmp, pkg->name, "#", pkg->version,
+		         (i == 0) ? PKG_SIG : PKG_FMT);
+		if ((fd[i] = open(tmp.p, MODERWCT, DEFFILEMODE)) < 0) {
+			warn("open %s", tmp.p);
 			goto failure;
 		}
 
-		S(tmp, "%.*s%s", URL_MAX, PKG_SRC, file);
-		if (netfd(tmp, fd[i], NULL) < 0)
+		tmp.n -= membuf_vstrcat(&tmp, PKG_SRC,
+		         pkg->name, "#", pkg->version);
+		if (netfd(tmp.p, fd[i], NULL) < 0)
 			goto failure;
 	}
 
@@ -240,19 +249,24 @@ done:
 		close(fd[0]);
 	if (fd[1] != -1)
 		close(fd[1]);
+	freepool();
 	return rval;
 }
 
 static int
 regpkg(Package *pkg)
 {
-	int rval;
-	char buf[PATH_MAX];
+	Membuf p;
 
-	S(buf, "%s%s", GETDB(LOCAL), pkg->name);
-	rval = copy(pkg->path, buf);
+	membuf_strinit(&p, PATHMAX);
+	membuf_vstrcat(&p, GETDB(LOCAL), pkg->name);
 
-	return (rval < 0);
+	if (copy(pkg->path, p.p) < 0)
+		return 1;
+
+	freepool();
+
+	return 0;
 }
 
 static int
@@ -323,36 +337,38 @@ show_ver(Package *pkg)
 static int
 unregpkg(Package *pkg)
 {
-	int rval;
-	rval = remove(pkg->path);
-	return (rval < 0);
+	if (remove(pkg->path) < 0)
+		return 1;
+
+	return 0;
 }
 
 static int
 update(void)
 {
+	Membuf p;
 	int fd[2], rval;
-	char buf[PATH_MAX];
 
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	S(buf, "%s%s", PKG_TMP, PKG_FDB);
+	membuf_strinit(&p, PATHMAX);
+	p.n -= membuf_vstrcat(&p, PKG_TMP, PKG_FDB);
 
-	if ((fd[0] = open(buf, MODERWCT, DEFFILEMODE)) < 0) {
-		warn("open %s", buf);
+	if ((fd[0] = open(p.p, MODERWCT, DEFFILEMODE)) < 0) {
+		warn("open %s", p.p);
 		goto failure;
 	}
 
-	S(buf, "%.*s%s", URL_MAX, PKG_SDB, PKG_FDB);
+	p.n -= membuf_vstrcat(&p, PKG_SDB, PKG_FDB);
 
-	if (netfd(buf, fd[0], NULL) < 0)
+	if (netfd(p.p, fd[0], NULL) < 0)
 		goto failure;
 
-	S(buf, "%s%s.tar", PKG_TMP, PKG_FDB);
+	p.n -= membuf_vstrcat(&p, PKG_TMP, PKG_FDB, ".ustar");
 
-	if ((fd[1] = open(buf, MODERWCT, DEFFILEMODE)) < 0) {
-		warn("open %s", buf);
+	if ((fd[1] = open(p.p, MODERWCT, DEFFILEMODE)) < 0) {
+		warn("open %s", p.p);
 		goto failure;
 	}
 
@@ -378,6 +394,7 @@ done:
 		close(fd[0]);
 	if (fd[1] != -1)
 		close(fd[1]);
+	freepool();
 	return rval;
 }
 
@@ -392,12 +409,11 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
+	Membuf p;
 	Package *pkg;
 	int (*fn)(Package *);
 	int rval, type, atype;
-	unsigned int hash;
-	char *dbp;
-	char buf[PATH_MAX];
+	unsigned hash;
 
 	atype = 0;
 	rval  = 0;
@@ -486,15 +502,17 @@ main(int argc, char *argv[])
 
 	argc--, argv++;
 
-	dbp = GETDB((atype == 0) ? type : atype);
+	membuf_strinit(&p, PATHMAX);
+	membuf_vstrcat(&p, GETDB((atype == 0) ? type : atype), "/");
 	for (; *argv; argc--, argv++) {
-		S(buf, "%s%s", dbp, *argv);
-		if (!(pkg = db_open(buf))) {
+		p.n -= membuf_strcat(&p, *argv);
+		if (!(pkg = db_open(p.p))) {
 			if (errno == ENOMEM)
 				exit(1);
 			rval = 1;
 			continue;
 		}
+		freepool();
 		rval |= fn(pkg);
 		db_close(pkg);
 	}

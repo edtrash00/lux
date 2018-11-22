@@ -96,3 +96,30 @@ remove(const char *path) {
 
 	return 0;
 }
+
+int
+mkdirp(char *path, mode_t dmode, mode_t mode)
+{
+	char *p, c;
+
+	c = 0;
+	p = path;
+
+	if ((path[0] == '.' || path[0] == '/') && path[1] == 0)
+		return 0;
+
+	for (; *p; *p = c) {
+		p += strspn(p, "/");
+		p += strcspn(p, "/");
+
+		c  = *p;
+		*p = '\0';
+
+		if (mkdir(path, c ? dmode : mode) < 0 && errno != EEXIST) {
+			warn("mkdir %s", path);
+			return -1;
+		}
+	}
+
+	return 0;
+}

@@ -10,8 +10,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "zlib.h"
 #include "pkg.h"
+#include "zlib.h"
 
 #define BLKSIZE 512
 #define LINK(a) ((a == SYMTYPE) ? symlink : link)

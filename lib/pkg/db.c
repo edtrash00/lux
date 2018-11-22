@@ -24,7 +24,7 @@ db_open(const char *file)
 {
 	FILE *fp;
 	Package *pkg;
-	struct node **np;
+	Node **np;
 	ssize_t len;
 	off_t *op;
 	char **sp, *p, buf[LINE_MAX];

@@ -4,10 +4,10 @@
 
 #include "pkg.h"
 
-struct node *
+Node *
 addelement(const void *value)
 {
-	struct node *new;
+	Node *new;
 
 	if (!(new = malloc(1 * sizeof(*new))))
 		goto failure;
@@ -24,16 +24,16 @@ done:
 }
 
 void
-freenode(struct node *old)
+freenode(Node *old)
 {
 	free(old->data);
 	free(old);
 }
 
-struct node *
-popnode(struct node **sp)
+Node *
+popnode(Node **sp)
 {
-	struct node *old;
+	Node *old;
 
 	old = *sp;
 	*sp = old->next;
@@ -42,7 +42,7 @@ popnode(struct node **sp)
 }
 
 int
-pushnode(struct node **sp, struct node *new)
+pushnode(Node **sp, Node *new)
 {
 	if (!new)
 		return -1;

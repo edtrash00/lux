@@ -36,9 +36,9 @@ LIBPKGSRC=\
 	lib/pkg/ar.c\
 	lib/pkg/db.c\
 	lib/pkg/fs.c\
-	lib/pkg/mode.c\
 	lib/pkg/net.c\
 	lib/pkg/node.c\
+	lib/pkg/str.c\
 	lib/pkg/util.c
 
 # LIB PATH

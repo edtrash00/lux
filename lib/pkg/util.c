@@ -4,7 +4,6 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -108,33 +107,6 @@ filetosum(int fd, ssize_t *sz)
 	return (~sum);
 }
 
-int
-mkdirp(char *path, mode_t dmode, mode_t mode)
-{
-	char *p, c;
-
-	c = 0;
-	p = path;
-
-	if ((path[0] == '.' || path[0] == '/') && path[1] == 0)
-		return 0;
-
-	for (; *p; *p = c) {
-		p += strspn(p, "/");
-		p += strcspn(p, "/");
-
-		c  = *p;
-		*p = '\0';
-
-		if (mkdir(path, c ? dmode : mode) < 0 && errno != EEXIST) {
-			warn("mkdir %s", path);
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
 /* sdbm (modified) */
 unsigned
 strtohash(char *str)
@@ -150,14 +122,14 @@ strtohash(char *str)
 	return hash;
 }
 
-intmax_t
-strtobase(const char *str, intmax_t min, intmax_t max, int base)
+long long
+strtobase(const char *str, long long min, long long max, int base)
 {
-	intmax_t res;
+	long long res;
 	char *end;
 
 	errno = 0;
-	res   = strtoimax(str, &end, base);
+	res   = strtoll(str, &end, base);
 
 	if (end == str || *end != '\0')
 		errno = EINVAL;
@@ -169,4 +141,21 @@ strtobase(const char *str, intmax_t min, intmax_t max, int base)
 		err(1, "strtobase %s", str);
 
 	return res;
+}
+
+mode_t
+strtomode(const char *str, mode_t mode)
+{
+	mode_t octal;
+	char *end;
+
+	octal = (mode_t)strtoul(str, &end, 8);
+
+	if (!*end || octal > 07777)
+		return 0755;
+
+	mode  &= ~ALLPERMS;
+	octal &=  ALLPERMS;
+
+	return  ((octal | mode) & ~umask(0));
 }
