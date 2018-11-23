@@ -20,28 +20,23 @@ enum {
 };
 
 Package *
-db_open(const char *file)
+db_open(Package *pkg, Membuf *mp, char *file)
 {
 	FILE *fp;
-	Package *pkg;
 	Node **np;
 	ssize_t len;
-	off_t *op;
-	char **sp, *p, buf[LINE_MAX];
+	char buf[LINE_MAX];
+	char *p, **sp;
 
 	if (!(fp = fopen(file, "r"))) {
 		warn("fopen %s", file);
 		goto failure;
 	}
 
-	if (!(pkg = malloc(1 * sizeof(*pkg)))) {
-		warn("malloc");
+	pkg->path = mp->p + mp->n;
+	if (membuf_dstrcat(mp, file) < 0) {
+		warn("membuf_dstrcat");
 		goto failure;
-	}
-
-	if (!(pkg->path = strdup(file))) {
-		warn("strdup");
-		goto err;
 	}
 
 	pkg->name        = NULL;
@@ -58,7 +53,6 @@ db_open(const char *file)
 		buf[len-1] = '\0'; /* remove trailing newline */
 		sp = NULL;
 		np = NULL;
-		op = NULL;
 
 		/* ignore blank lines */
 		if (*buf == '\0' || *buf == '#')
@@ -84,8 +78,8 @@ db_open(const char *file)
 			sp = &pkg->description;
 			break;
 		case SIZE:
-			op = &pkg->size;
-			break;
+			pkg->size = strtobase(p, 0, UINT_MAX, 10);
+			continue;
 		case RUNDEP:
 			np = &pkg->rdeps;
 			break;
@@ -105,23 +99,22 @@ db_open(const char *file)
 			continue;
 		}
 
-		if (op)
-			*op = strtobase(p, 0, UINT_MAX, 10);
-
-		if (sp && !(*sp = strdup(p))) {
-			warn("strtodup");
-			goto err;
+		if (sp) {
+			*sp = mp->p + mp->n;
+			if (membuf_dstrcat(mp, p) < 0) {
+				warn("membuf_dstrcat");
+				goto failure;
+			}
+			mp->n++;
 		}
 
-		if (np && pushnode(np, addelement(p)) < 0) {
+		if (np && pushnode(np, addelement(p, mp)) < 0) {
 			warn("addelement %s", p);
-			goto err;
+			goto failure;
 		}
 	}
 
 	goto done;
-err:
-	db_close(pkg);
 failure:
 	pkg = NULL;
 done:
@@ -129,26 +122,4 @@ done:
 		fclose(fp);
 
 	return pkg;
-}
-
-void
-db_close(Package *pkg) {
-	free(pkg->name);
-	free(pkg->version);
-	free(pkg->license);
-	free(pkg->description);
-	free(pkg->path);
-
-	while (pkg->rdeps)
-		freenode(popnode(&pkg->rdeps));
-	while (pkg->mdeps)
-		freenode(popnode(&pkg->mdeps));
-	while (pkg->dirs)
-		freenode(popnode(&pkg->dirs));
-	while (pkg->files)
-		freenode(popnode(&pkg->files));
-	while (pkg->flags)
-		freenode(popnode(&pkg->flags));
-
-	free(pkg);
 }

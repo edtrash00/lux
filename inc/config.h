@@ -9,3 +9,5 @@
 #define PKG_FMT ".pkg.tzz"
 #define PKG_SIG ".sig"
 
+#define MPOOLSIZE  65536             /* heap memory pool   */
+#define POOLSIZE   2048              /* stack memory pool  */

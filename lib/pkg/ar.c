@@ -71,7 +71,7 @@ unarchive(int tarfd)
 
 		mode  = strtomode(head->mode, ACCESSPERMS);
 
-		snprintf(buf, sizeof(buf), "%s", fname);
+		strncpy(buf, fname, sizeof(fname));
 		if (mkdirp(dirname(buf), ACCESSPERMS, ACCESSPERMS) < 0)
 			goto failure;
 

@@ -44,8 +44,7 @@ int uncomp(int, int);
 int unarchive(int);
 
 /* db.c */
-Package * db_open(const char *);
-void      db_close(Package *);
+Package * db_open(Package *, Membuf *, char *);
 
 /* fgetline.c */
 ssize_t fgetline(char *, size_t, FILE *);
@@ -60,21 +59,22 @@ int mkdirp(char *, mode_t, mode_t);
 int netfd(char *, int, const char *);
 
 /* node.c */
-Node * addelement(const void *);
-void   freenode(Node *);
-Node * popnode(Node **);
+Node * addelement(char *, Membuf *);
 int    pushnode(Node **, Node *);
 
 /* str.c */
 #define membuf_vstrcat(a, b, ...) membuf_vstrcat_((a), (b), __VA_ARGS__, NULL)
 #define membuf_strinit(x, y) \
 do {\
-	if ((stackpool.n += (y)) > stackpool.a)\
+	membuf_strinit_((x), stackpool.p + stackpool.n, (y));\
+	if ((stackpool.n += (x)->a) > stackpool.a)\
 		errx(1, "buffer overflow");\
-	membuf_strinit_((x), stackpool.p+stackpool.n, (y));\
 } while(0)
 
+ssize_t membuf_dmemcat(Membuf *, void *, size_t);
+ssize_t membuf_memcat(Membuf *, void *, size_t);
 void    membuf_strinit_(Membuf *, char *, size_t);
+ssize_t membuf_dstrcat(Membuf *, char *);
 ssize_t membuf_strcat(Membuf *, char *);
 ssize_t membuf_vstrcat_(Membuf *, char *, ...);
 

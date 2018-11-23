@@ -1,44 +1,26 @@
-#include <err.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "pkg.h"
 
 Node *
-addelement(const void *value)
+addelement(char *s, Membuf *p)
 {
 	Node *new;
 
-	if (!(new = malloc(1 * sizeof(*new))))
+	new   = (Node *)p->p + p->n;
+	if (membuf_dmemcat(p, "\0", sizeof(*new)) < 0)
 		goto failure;
 
-	if (!(new->data = strdup(value)))
+	new->data = p->p + p->n;
+	if (membuf_dstrcat(p, s) < 0)
 		goto failure;
 
 	goto done;
 failure:
-	free(new);
 	new = NULL;
 done:
 	return new;
-}
-
-void
-freenode(Node *old)
-{
-	free(old->data);
-	free(old);
-}
-
-Node *
-popnode(Node **sp)
-{
-	Node *old;
-
-	old = *sp;
-	*sp = old->next;
-
-	return old;
 }
 
 int
