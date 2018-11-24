@@ -8,9 +8,8 @@ addelement(char *s, Membuf *p)
 {
 	Node *new;
 
-	new   = (Node *)p->p + p->n;
-	if (membuf_dmemcat(p, "\0", sizeof(*new)) < 0)
-		goto failure;
+	new   = (Node *)(p->p + p->n);
+	p->n += sizeof(*new);
 
 	new->data = p->p + p->n;
 	if (membuf_dstrcat(p, s) < 0)

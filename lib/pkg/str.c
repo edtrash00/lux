@@ -5,42 +5,6 @@
 
 #include "pkg.h"
 
-ssize_t
-membuf_dmemcat(Membuf *p, void *s, size_t n)
-{
-	for (; p->n + n >= p->a;) {
-		p->a *= 2;
-		if (!(p->p = realloc(p->p, p->a)))
-			return -1;
-	}
-	return membuf_memcat(p, s, n);
-}
-
-ssize_t
-membuf_dstrcat(Membuf *p, char *s)
-{
-	ssize_t n;
-
-	if ((n = membuf_dmemcat(p, s, strlen(s))) < 0)
-		return -1;
-
-	p->p[p->n] = '\0';
-
-	return n;
-}
-
-ssize_t
-membuf_memcat(Membuf *p, void *s, size_t n)
-{
-	if (p->n + n >= p->a)
-		return -1;
-
-	memcpy(p->p + p->n, s, n);
-	p->n += n;
-
-	return n;
-}
-
 void
 membuf_strinit_(Membuf *p, char *s, size_t n)
 {
@@ -50,16 +14,22 @@ membuf_strinit_(Membuf *p, char *s, size_t n)
 }
 
 ssize_t
-membuf_strcat(Membuf *p, char *s)
+membuf_strcats(Membuf *p, char *s, size_t n)
 {
-	ssize_t n;
-
-	if ((n = membuf_memcat(p, s, strlen(s))) < 0)
+	if (p->n + n >= p->a)
 		return -1;
 
+	memmove(p->p + p->n, s, n);
+	p->n += n;
 	p->p[p->n] = '\0';
 
 	return n;
+}
+
+ssize_t
+membuf_strcat(Membuf *p, char *s)
+{
+	return (membuf_strcats(p, s, strlen(s)));
 }
 
 ssize_t
@@ -84,4 +54,17 @@ membuf_vstrcat_(Membuf *p, char *s0, ...)
 	va_end(ap);
 
 	return t;
+}
+
+ssize_t
+membuf_dstrcat(Membuf *p, char *s)
+{
+	ssize_t n;
+	n = strlen(s);
+	for (; p->n + n >= p->a;) {
+		p->a *= 2;
+		if (!(p->p = realloc(p->p, p->a)))
+			return -1;
+	}
+	return membuf_strcats(p, s, n);
 }
