@@ -133,7 +133,7 @@ explode(Package *pkg)
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	membuf_strinit(&p1, sizepool(1));
+	membuf_strinit(&p1, sizepool(2));
 	membuf_vstrcat(&p1, PKG_TMP, pkg->name, "#", pkg->version);
 
 	if (mkdir(p1.p, ACCESSPERMS) < 0) {
@@ -147,6 +147,7 @@ explode(Package *pkg)
 		goto failure;
 	}
 
+	membuf_strinit(&p1, sizepool(2));
 	membuf_vstrcat(&p2, p1.p, ".ustar");
 	membuf_strcat(&p1, PKG_FMT);
 
@@ -517,9 +518,9 @@ main(int argc, char *argv[])
 			rval = 1;
 			continue;
 		}
-		mp.n = 0;
 		stackpool.n = p.n;
 		rval |= fn(pkg);
+		mp.n = 0;
 	}
 
 	free(mp.p);
