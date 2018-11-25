@@ -6,6 +6,15 @@
 
 #include "pkg.h"
 
+#define init1(a, b, c) \
+membuf_strinit_(&(a), (b), sizeof((b)));\
+membuf_strcat(&(a), (c))
+
+#define init2(a, b)\
+membuf_dstrcat(&(a), (b));\
+membuf_dstrcat(&(a), "\0");\
+(a).n++
+
 enum {
 	NAME        = 31371, /* name        */
 	VERSION     = 7384,  /* version     */
@@ -20,39 +29,24 @@ enum {
 };
 
 Package *
-db_open(Package *pkg, Membuf *mp, char *file)
+db_open(Package *pkg, char *file)
 {
 	FILE *fp;
-	Node **np;
+	Membuf mp;
 	ssize_t len;
 	char buf[LINE_MAX];
-	char *p, **sp;
+	char *p;
 
 	if (!(fp = fopen(file, "r"))) {
 		warn("fopen %s", file);
 		goto failure;
 	}
 
-	pkg->path = mp->p + mp->n;
-	if (membuf_dstrcat(mp, file) < 0) {
-		warn("membuf_dstrcat");
-		goto failure;
-	}
-
-	pkg->name        = NULL;
-	pkg->version     = NULL;
-	pkg->license     = NULL;
-	pkg->description = NULL;
-	pkg->rdeps       = NULL;
-	pkg->mdeps       = NULL;
-	pkg->dirs        = NULL;
-	pkg->files       = NULL;
-	pkg->flags       = NULL;
+	membuf_strinit_(&mp, pkg->path, sizeof(pkg->path));
+	membuf_strcat(&mp, file);
 
 	while ((len = fgetline(buf, sizeof(buf), fp)) != EOF) {
 		buf[len-1] = '\0'; /* remove trailing newline */
-		sp = NULL;
-		np = NULL;
 
 		/* ignore blank lines */
 		if (*buf == '\0' || *buf == '#')
@@ -66,51 +60,37 @@ db_open(Package *pkg, Membuf *mp, char *file)
 
 		switch (strtohash(buf)) {
 		case NAME:
-			sp = &pkg->name;
+			init1(mp, pkg->name, p);
 			break;
 		case VERSION:
-			sp = &pkg->version;
+			init1(mp, pkg->version, p);
 			break;
 		case LICENSE:
-			sp = &pkg->license;
+			init1(mp, pkg->license, p);
 			break;
 		case DESCRIPTION:
-			sp = &pkg->description;
+			init1(mp, pkg->description, p);
 			break;
 		case SIZE:
 			pkg->size = strtobase(p, 0, UINT_MAX, 10);
-			continue;
+			break;
 		case RUNDEP:
-			np = &pkg->rdeps;
+			init2(pkg->rdeps, p);
 			break;
 		case MAKEDEP:
-			np = &pkg->mdeps;
+			init2(pkg->mdeps, p);
 			break;
 		case DIRECTORY:
-			np = &pkg->dirs;
+			init2(pkg->dirs, p);
 			break;
 		case AFILE:
-			np = &pkg->files;
+			init2(pkg->files, p);
 			break;
 		case FLAG:
-			np = &pkg->flags;
+			init2(pkg->flags, p);
 			break;
 		default:
 			continue;
-		}
-
-		if (sp) {
-			*sp = mp->p + mp->n;
-			if (membuf_dstrcat(mp, p) < 0) {
-				warn("membuf_dstrcat");
-				goto failure;
-			}
-			mp->n++;
-		}
-
-		if (np && pushnode(np, addelement(p, mp)) < 0) {
-			warn("addelement %s", p);
-			goto failure;
 		}
 	}
 

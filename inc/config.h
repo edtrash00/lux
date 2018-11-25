@@ -9,5 +9,13 @@
 #define PKG_FMT ".pkg.tzz"
 #define PKG_SIG ".sig"
 
-#define MPOOLSIZE  65536             /* heap memory pool   */
-#define POOLSIZE   2048              /* stack memory pool  */
+enum {
+	MPOOLSIZE   = 65536,
+	POOLSIZE    = 2048,
+	PKG_NAMEMAX = 256,
+	PKG_VERMAX  = 128,
+	PKG_LICMAX  = 256,
+	PKG_DESCMAX = 512,
+	PKG_PATHMAX = 512,
+	PKG_VARSIZE = MPOOLSIZE/5,
+};

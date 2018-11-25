@@ -16,27 +16,20 @@ struct Membuf {
 	char   *p;
 };
 
-typedef struct Node Node;
-
-struct Node {
-	char *data;
-	Node *next;
-};
-
 typedef struct Package Package;
 
 struct Package {
-	Node *dirs;
-	Node *files;
-	Node *flags;
-	Node *mdeps;
-	Node *rdeps;
+	Membuf dirs;
+	Membuf files;
+	Membuf flags;
+	Membuf mdeps;
+	Membuf rdeps;
 	off_t size;
-	char *name;
-	char *version;
-	char *license;
-	char *description;
-	char *path;
+	char name[PKG_NAMEMAX];
+	char version[PKG_VERMAX];
+	char license[PKG_LICMAX];
+	char description[PKG_DESCMAX];
+	char path[PKG_PATHMAX];
 };
 
 /* ar.c */
@@ -44,7 +37,7 @@ int uncomp(int, int);
 int unarchive(int);
 
 /* db.c */
-Package * db_open(Package *, Membuf *, char *);
+Package * db_open(Package *, char *);
 
 /* fgetline.c */
 ssize_t fgetline(char *, size_t, FILE *);
@@ -57,10 +50,6 @@ int mkdirp(char *, mode_t, mode_t);
 
 /* net.c */
 int netfd(char *, int, const char *);
-
-/* node.c */
-Node * addelement(char *, Membuf *);
-int    pushnode(Node **, Node *);
 
 /* str.c */
 #define membuf_vstrcat(a, b, ...) membuf_vstrcat_((a), (b), __VA_ARGS__, NULL)

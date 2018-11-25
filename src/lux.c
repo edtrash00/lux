@@ -47,20 +47,17 @@ static char buffer[POOLSIZE];
 static Membuf stackpool = { sizeof(buffer), 0, buffer };
 
 static int
-pnode(Node *np, int isfile, int putch)
+pnode(Membuf mp, int isfile, int putch)
 {
-	Membuf p;
+	char  *p;
 
-	membuf_strinit(&p, sizepool(1));
-
-	if (isfile)
-		membuf_strcat(&p, PKG_DIR);
-
-	for (; np; np = np->next) {
+	p = mp.p;
+	for (; *p;) {
 		if (putch++)
 			putchar(' ');
-		p.n -= membuf_strcat(&p, np->data);
-		fputs(p.p, stdout);
+		if (isfile)
+			fputs(PKG_DIR, stdout);
+		p += printf("%s", p) + 1;
 	}
 
 	freepool();
@@ -73,8 +70,8 @@ static int
 add(Package *pkg)
 {
 	Membuf p1, p2;
-	Node *np;
 	int i, rval;
+	char *p;
 
 	i    = 0;
 	rval = 0;
@@ -84,10 +81,10 @@ add(Package *pkg)
 	membuf_vstrcat(&p1, PKG_TMP, pkg->name, "#", pkg->version, "/");
 	membuf_strcat(&p2, PKG_DIR);
 	for (; i < 2; i++) {
-		np = (i == 0) ? pkg->files : pkg->dirs;
-		for (; np; np = np->next) {
-			p1.n -= membuf_strcat(&p1, np->data);
-			p2.n -= membuf_strcat(&p2, np->data);
+		p  = (i == 0) ? (pkg->files).p : (pkg->dirs).p;
+		for (; *p; p += strlen(p)) {
+			p1.n -= membuf_strcat(&p1, p);
+			p2.n -= membuf_strcat(&p2, p);
 			if (move(p1.p, p2.p) < 0)
 				rval = 1;
 		}
@@ -101,20 +98,20 @@ add(Package *pkg)
 static int
 del(Package *pkg)
 {
-	Membuf p;
-	Node *np;
+	Membuf mp;
 	int i, rval;
+	char *p;
 
 	i    = 0;
 	rval = 0;
 
-	membuf_strinit(&p, sizepool(1));
-	membuf_strcat(&p, PKG_DIR);
+	membuf_strinit(&mp, sizepool(1));
+	membuf_strcat(&mp, PKG_DIR);
 	for (; i < 2; i++) {
-		np = (i == 0) ? pkg->dirs : pkg->files;
-		for (; np; np = np->next) {
-			p.n -= membuf_strcat(&p, np->data);
-			if (remove(p.p) < 0)
+		p = (i == 0) ? (pkg->dirs).p : (pkg->files).p;
+		for (; *p; p += strlen(p)) {
+			mp.n -= membuf_strcat(&mp, p);
+			if (remove(mp.p) < 0)
 				rval = 1;
 		}
 	}
@@ -408,8 +405,8 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	Membuf p, mp;
-	Package *pkg;
+	Membuf p;
+	Package pkg;
 	int (*fn)(Package *);
 	int rval, type, atype;
 	unsigned hash;
@@ -501,30 +498,45 @@ main(int argc, char *argv[])
 
 	argc--, argv++;
 
-	membuf_strinit_(&mp, malloc(MPOOLSIZE), MPOOLSIZE);
-	if (!(mp.p))
+	membuf_strinit_(&pkg.dirs, malloc(PKG_VARSIZE), PKG_VARSIZE);
+	if (!(pkg.dirs.p))
 		err(1, "membuf_strinit_");
 
-	if (!(pkg = malloc(sizeof(*pkg))))
-		err(1, "malloc");
+	membuf_strinit_(&pkg.files, malloc(PKG_VARSIZE), PKG_VARSIZE);
+	if (!(pkg.files.p))
+		err(1, "membuf_strinit_");
+
+	membuf_strinit_(&pkg.flags, malloc(PKG_VARSIZE), PKG_VARSIZE);
+	if (!(pkg.flags.p))
+		err(1, "membuf_strinit_");
+
+	membuf_strinit_(&pkg.mdeps, malloc(PKG_VARSIZE), PKG_VARSIZE);
+	if (!(pkg.mdeps.p))
+		err(1, "membuf_strinit_");
+
+	membuf_strinit_(&pkg.rdeps, malloc(PKG_VARSIZE), PKG_VARSIZE);
+	if (!(pkg.rdeps.p))
+		err(1, "membuf_strinit_");
 
 	membuf_strinit(&p, sizepool(1));
 	membuf_vstrcat(&p, GETDB((atype == 0) ? type : atype), "/");
 	for (; *argv; argc--, argv++) {
 		p.n -= membuf_strcat(&p, *argv);
-		if (!(pkg = db_open(pkg, &mp, p.p))) {
+		if (!(db_open(&pkg, p.p))) {
 			if (errno == ENOMEM)
 				exit(1);
 			rval = 1;
 			continue;
 		}
 		stackpool.n = p.n;
-		rval |= fn(pkg);
-		mp.n = 0;
+		rval |= fn(&pkg);
 	}
 
-	free(mp.p);
-	free(pkg);
+	free(pkg.dirs.p);
+	free(pkg.files.p);
+	free(pkg.flags.p);
+	free(pkg.mdeps.p);
+	free(pkg.rdeps.p);
 
 	return rval;
 }

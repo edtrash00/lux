@@ -11,6 +11,7 @@ membuf_strinit_(Membuf *p, char *s, size_t n)
 	p->a = n;
 	p->n = 0;
 	p->p = s;
+	memset(p->p, 0, 1);
 }
 
 ssize_t
