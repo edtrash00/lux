@@ -6,7 +6,7 @@
 #include "pkg.h"
 
 void
-membuf_strinit_(Membuf *p, char *s, size_t n)
+membuf_strinit(Membuf *p, char *s, size_t n)
 {
 	p->a = n;
 	p->n = 0;

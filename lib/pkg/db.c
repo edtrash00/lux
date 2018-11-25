@@ -7,7 +7,7 @@
 #include "pkg.h"
 
 #define init1(a, b, c) \
-membuf_strinit_(&(a), (b), sizeof((b)));\
+membuf_strinit(&(a), (b), sizeof((b)));\
 membuf_strcat(&(a), (c))
 
 #define init2(a, b)\
@@ -52,11 +52,11 @@ void
 db_init(Package *pkg)
 {
 	memset(pkg, 0, sizeof(*pkg));
-	membuf_strinit_(&pkg->dirs,  NULL, PKG_VARSIZE);
-	membuf_strinit_(&pkg->files, NULL, PKG_VARSIZE);
-	membuf_strinit_(&pkg->flags, NULL, PKG_VARSIZE);
-	membuf_strinit_(&pkg->mdeps, NULL, PKG_VARSIZE);
-	membuf_strinit_(&pkg->rdeps, NULL, PKG_VARSIZE);
+	membuf_strinit(&pkg->dirs,  NULL, PKG_VARSIZE);
+	membuf_strinit(&pkg->files, NULL, PKG_VARSIZE);
+	membuf_strinit(&pkg->flags, NULL, PKG_VARSIZE);
+	membuf_strinit(&pkg->mdeps, NULL, PKG_VARSIZE);
+	membuf_strinit(&pkg->rdeps, NULL, PKG_VARSIZE);
 }
 
 Package *
@@ -74,7 +74,7 @@ db_open(Package *pkg, char *file)
 	}
 
 	db_clean(pkg);
-	membuf_strinit_(&mp, pkg->path, sizeof(pkg->path));
+	membuf_strinit(&mp, pkg->path, sizeof(pkg->path));
 	membuf_strcat(&mp, file);
 
 	while ((len = fgetline(buf, sizeof(buf), fp)) != EOF) {

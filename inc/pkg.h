@@ -55,13 +55,7 @@ int netfd(char *, int, const char *);
 
 /* str.c */
 #define membuf_vstrcat(a, b, ...) membuf_vstrcat_((a), (b), __VA_ARGS__, NULL)
-#define membuf_strinit(x, y) \
-do {\
-	membuf_strinit_((x), stackpool.p + stackpool.n, (y));\
-	if ((stackpool.n += (x)->a) > stackpool.a)\
-		errx(1, "buffer overflow");\
-} while(0)
-void    membuf_strinit_(Membuf *, char *, size_t);
+void    membuf_strinit(Membuf *, char *, size_t);
 ssize_t membuf_dstrcat(Membuf *, char *);
 ssize_t membuf_strcat(Membuf *, char *);
 ssize_t membuf_vstrcat_(Membuf *, char *, ...);
