@@ -11,7 +11,6 @@ membuf_strinit_(Membuf *p, char *s, size_t n)
 	p->a = n;
 	p->n = 0;
 	p->p = s;
-	memset(p->p, 0, 1);
 }
 
 ssize_t
@@ -62,6 +61,10 @@ membuf_dstrcat(Membuf *p, char *s)
 {
 	ssize_t n;
 	n = strlen(s);
+	if (!(p->p)) {
+		if (!(p->p = malloc(p->a)))
+			return -1;
+	}
 	for (; p->n + n >= p->a;) {
 		p->a *= 2;
 		if (!(p->p = realloc(p->p, p->a)))

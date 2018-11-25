@@ -37,6 +37,8 @@ int uncomp(int, int);
 int unarchive(int);
 
 /* db.c */
+void      db_free(Package *);
+void      db_init(Package *);
 Package * db_open(Package *, char *);
 
 /* fgetline.c */
@@ -59,9 +61,6 @@ do {\
 	if ((stackpool.n += (x)->a) > stackpool.a)\
 		errx(1, "buffer overflow");\
 } while(0)
-
-ssize_t membuf_dmemcat(Membuf *, void *, size_t);
-ssize_t membuf_memcat(Membuf *, void *, size_t);
 void    membuf_strinit_(Membuf *, char *, size_t);
 ssize_t membuf_dstrcat(Membuf *, char *);
 ssize_t membuf_strcat(Membuf *, char *);

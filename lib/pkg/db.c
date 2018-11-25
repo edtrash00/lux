@@ -28,6 +28,37 @@ enum {
 	FLAG        = 65388  /* flag        */
 };
 
+static void
+db_clean(Package *pkg)
+{
+	(pkg->dirs).n  = 0;
+	(pkg->files).n = 0;
+	(pkg->flags).n = 0;
+	(pkg->mdeps).n = 0;
+	(pkg->rdeps).n = 0;
+	if ((pkg->dirs).p)
+		memset((pkg->dirs).p,  0, 1);
+	if ((pkg->files).p)
+		memset((pkg->files).p, 0, 1);
+	if ((pkg->flags).p)
+		memset((pkg->flags).p, 0, 1);
+	if ((pkg->mdeps).p)
+		memset((pkg->mdeps).p, 0, 1);
+	if ((pkg->rdeps).p)
+		memset((pkg->rdeps).p, 0, 1);
+}
+
+void
+db_init(Package *pkg)
+{
+	memset(pkg, 0, sizeof(*pkg));
+	membuf_strinit_(&pkg->dirs,  NULL, PKG_VARSIZE);
+	membuf_strinit_(&pkg->files, NULL, PKG_VARSIZE);
+	membuf_strinit_(&pkg->flags, NULL, PKG_VARSIZE);
+	membuf_strinit_(&pkg->mdeps, NULL, PKG_VARSIZE);
+	membuf_strinit_(&pkg->rdeps, NULL, PKG_VARSIZE);
+}
+
 Package *
 db_open(Package *pkg, char *file)
 {
@@ -42,6 +73,7 @@ db_open(Package *pkg, char *file)
 		goto failure;
 	}
 
+	db_clean(pkg);
 	membuf_strinit_(&mp, pkg->path, sizeof(pkg->path));
 	membuf_strcat(&mp, file);
 
@@ -102,4 +134,14 @@ done:
 		fclose(fp);
 
 	return pkg;
+}
+
+void
+db_free(Package *pkg)
+{
+	free(pkg->dirs.p);
+	free(pkg->files.p);
+	free(pkg->flags.p);
+	free(pkg->mdeps.p);
+	free(pkg->rdeps.p);
 }

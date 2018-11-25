@@ -46,12 +46,13 @@ enum RTypes {
 static char buffer[POOLSIZE];
 static Membuf stackpool = { sizeof(buffer), 0, buffer };
 
-static int
+static void
 pnode(Membuf mp, int isfile, int putch)
 {
 	char  *p;
 
 	p = mp.p;
+
 	for (; *p;) {
 		if (putch++)
 			putchar(' ');
@@ -61,8 +62,6 @@ pnode(Membuf mp, int isfile, int putch)
 	}
 
 	freepool();
-
-	return 1;
 }
 
 /* action functions */
@@ -81,8 +80,8 @@ add(Package *pkg)
 	membuf_vstrcat(&p1, PKG_TMP, pkg->name, "#", pkg->version, "/");
 	membuf_strcat(&p2, PKG_DIR);
 	for (; i < 2; i++) {
-		p  = (i == 0) ? (pkg->files).p : (pkg->dirs).p;
-		for (; *p; p += strlen(p)) {
+		p = (i == 0) ? (pkg->files).p : (pkg->dirs).p;
+		for (; *p; p += strlen(p)+1) {
 			p1.n -= membuf_strcat(&p1, p);
 			p2.n -= membuf_strcat(&p2, p);
 			if (move(p1.p, p2.p) < 0)
@@ -109,7 +108,7 @@ del(Package *pkg)
 	membuf_strcat(&mp, PKG_DIR);
 	for (; i < 2; i++) {
 		p = (i == 0) ? (pkg->dirs).p : (pkg->files).p;
-		for (; *p; p += strlen(p)) {
+		for (; *p; p += strlen(p)+1) {
 			mp.n -= membuf_strcat(&mp, p);
 			if (remove(mp.p) < 0)
 				rval = 1;
@@ -268,7 +267,7 @@ regpkg(Package *pkg)
 static int
 show_desc(Package *pkg)
 {
-	if (pkg->description)
+	if (*pkg->description)
 		puts(pkg->description);
 
 	return 0;
@@ -292,7 +291,7 @@ show_flags(Package *pkg)
 static int
 show_lic(Package *pkg)
 {
-	if (pkg->license)
+	if (*pkg->license)
 		puts(pkg->license);
 
 	return 0;
@@ -308,7 +307,7 @@ show_mdeps(Package *pkg)
 static int
 show_name(Package *pkg)
 {
-	if (pkg->name)
+	if (*pkg->name)
 		puts(pkg->name);
 
 	return 0;
@@ -324,7 +323,7 @@ show_rdeps(Package *pkg)
 static int
 show_ver(Package *pkg)
 {
-	if (pkg->version)
+	if (*pkg->version)
 		puts(pkg->version);
 
 	return 0;
@@ -498,25 +497,7 @@ main(int argc, char *argv[])
 
 	argc--, argv++;
 
-	membuf_strinit_(&pkg.dirs, malloc(PKG_VARSIZE), PKG_VARSIZE);
-	if (!(pkg.dirs.p))
-		err(1, "membuf_strinit_");
-
-	membuf_strinit_(&pkg.files, malloc(PKG_VARSIZE), PKG_VARSIZE);
-	if (!(pkg.files.p))
-		err(1, "membuf_strinit_");
-
-	membuf_strinit_(&pkg.flags, malloc(PKG_VARSIZE), PKG_VARSIZE);
-	if (!(pkg.flags.p))
-		err(1, "membuf_strinit_");
-
-	membuf_strinit_(&pkg.mdeps, malloc(PKG_VARSIZE), PKG_VARSIZE);
-	if (!(pkg.mdeps.p))
-		err(1, "membuf_strinit_");
-
-	membuf_strinit_(&pkg.rdeps, malloc(PKG_VARSIZE), PKG_VARSIZE);
-	if (!(pkg.rdeps.p))
-		err(1, "membuf_strinit_");
+	db_init(&pkg);
 
 	membuf_strinit(&p, sizepool(1));
 	membuf_vstrcat(&p, GETDB((atype == 0) ? type : atype), "/");
@@ -532,11 +513,7 @@ main(int argc, char *argv[])
 		rval |= fn(&pkg);
 	}
 
-	free(pkg.dirs.p);
-	free(pkg.files.p);
-	free(pkg.flags.p);
-	free(pkg.mdeps.p);
-	free(pkg.rdeps.p);
+	db_free(&pkg);
 
 	return rval;
 }
