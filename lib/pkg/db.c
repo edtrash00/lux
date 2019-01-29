@@ -6,13 +6,14 @@
 
 #include "pkg.h"
 
+#define clean(x) if ((x).p) { (x).n ; memset((x).p, 0, (x).a); }
+
 #define init1(a, b, c) \
 membuf_strinit(&(a), (b), sizeof((b)));\
 membuf_strcat(&(a), (c))
 
 #define init2(a, b)\
 membuf_dstrcat(&(a), (b));\
-membuf_dstrcat(&(a), "\0");\
 (a).n++
 
 enum {
@@ -31,21 +32,11 @@ enum {
 static void
 db_clean(Package *pkg)
 {
-	(pkg->dirs).n  = 0;
-	(pkg->files).n = 0;
-	(pkg->flags).n = 0;
-	(pkg->mdeps).n = 0;
-	(pkg->rdeps).n = 0;
-	if ((pkg->dirs).p)
-		memset((pkg->dirs).p,  0, 1);
-	if ((pkg->files).p)
-		memset((pkg->files).p, 0, 1);
-	if ((pkg->flags).p)
-		memset((pkg->flags).p, 0, 1);
-	if ((pkg->mdeps).p)
-		memset((pkg->mdeps).p, 0, 1);
-	if ((pkg->rdeps).p)
-		memset((pkg->rdeps).p, 0, 1);
+	clean(pkg->dirs);
+	clean(pkg->files);
+	clean(pkg->flags);
+	clean(pkg->mdeps);
+	clean(pkg->rdeps);
 }
 
 void
@@ -79,7 +70,6 @@ db_open(Package *pkg, char *file)
 
 	while ((len = fgetline(buf, sizeof(buf), fp)) != EOF) {
 		buf[len-1] = '\0'; /* remove trailing newline */
-
 		/* ignore blank lines */
 		if (*buf == '\0' || *buf == '#')
 			continue;
