@@ -18,6 +18,7 @@
 
 #define freepool()  stackpool.n = 0;
 #define ptrpool()   stackpool.p + stackpool.n
+#define advpool(x)  stackpool.n += (x)
 #define sizepool(x) ((stackpool.a - stackpool.n) / (x))
 
 enum Hash {
@@ -76,8 +77,8 @@ add(Package *pkg)
 	i    = 0;
 	rval = 0;
 
-	membuf_strinit(&p1, ptrpool(), sizepool(2));
-	membuf_strinit(&p2, ptrpool(), sizepool(2));
+	membuf_strinit(&p1, ptrpool(), sizepool(2)); advpool(p1.a);
+	membuf_strinit(&p2, ptrpool(), sizepool(2)); advpool(p2.a);
 	membuf_vstrcat(&p1, PKG_TMP, pkg->name, "#", pkg->version, "/");
 	membuf_strcat(&p2, PKG_DIR);
 	for (; i < 2; i++) {
@@ -105,7 +106,7 @@ del(Package *pkg)
 	i    = 0;
 	rval = 0;
 
-	membuf_strinit(&mp, ptrpool(), sizepool(1));
+	membuf_strinit(&mp, ptrpool(), sizepool(1)); advpool(mp.a);
 	membuf_strcat(&mp, PKG_DIR);
 	for (; i < 2; i++) {
 		p = (i == 0) ? (pkg->dirs).p : (pkg->files).p;
@@ -130,7 +131,7 @@ explode(Package *pkg)
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	membuf_strinit(&p1, ptrpool(), sizepool(2));
+	membuf_strinit(&p1, ptrpool(), sizepool(2)); advpool(p1.a);
 	membuf_vstrcat(&p1, PKG_TMP, pkg->name, "#", pkg->version);
 
 	if (mkdir(p1.p, ACCESSPERMS) < 0) {
@@ -144,7 +145,7 @@ explode(Package *pkg)
 		goto failure;
 	}
 
-	membuf_strinit(&p1, ptrpool(), sizepool(2));
+	membuf_strinit(&p2, ptrpool(), sizepool(2)); advpool(p2.a);
 	membuf_vstrcat(&p2, p1.p, ".ustar");
 	membuf_strcat(&p1, PKG_FMT);
 
@@ -192,7 +193,7 @@ fetch(Package *pkg)
 	i     = 0;
 	rval  = 0;
 
-	membuf_strinit(&tmp, ptrpool(), sizepool(1));
+	membuf_strinit(&tmp, ptrpool(), sizepool(1)); advpool(tmp.a);
 	for (; i < 2; i++) {
 		tmp.n -= membuf_vstrcat(&tmp, pkg->name, "#", pkg->version,
 		         (i == 0) ? PKG_SIG : PKG_FMT);
@@ -254,7 +255,7 @@ regpkg(Package *pkg)
 {
 	Membuf p;
 
-	membuf_strinit(&p, ptrpool(), sizepool(1));
+	membuf_strinit(&p, ptrpool(), sizepool(1)); advpool(p.a);
 	membuf_vstrcat(&p, GETDB(LOCAL), pkg->name);
 
 	if (copy(pkg->path, p.p) < 0)
@@ -348,7 +349,7 @@ update(void)
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	membuf_strinit(&p, ptrpool(), sizepool(1));
+	membuf_strinit(&p, ptrpool(), sizepool(1)); advpool(p.a);
 	p.n -= membuf_vstrcat(&p, PKG_TMP, PKG_FDB);
 
 	if ((fd[0] = open(p.p, MODERWCT, DEFFILEMODE)) < 0) {
@@ -500,7 +501,7 @@ main(int argc, char *argv[])
 
 	db_init(&pkg);
 
-	membuf_strinit(&p, ptrpool(), sizepool(1));
+	membuf_strinit(&p, ptrpool(), sizepool(1)); advpool(p.a);
 	membuf_vstrcat(&p, GETDB((atype == 0) ? type : atype), "/");
 	for (; *argv; argc--, argv++) {
 		p.n -= membuf_strcat(&p, *argv);
