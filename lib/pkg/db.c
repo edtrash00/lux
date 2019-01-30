@@ -6,7 +6,7 @@
 
 #include "pkg.h"
 
-#define clean(x) if ((x).p) { (x).n ; memset((x).p, 0, (x).a); }
+#define clean(x) if ((x).p) { memset((x).p, 0, (x).n); (x).n = 0; }
 
 #define init1(a, b, c) \
 membuf_strinit(&(a), (b), sizeof((b)));\
@@ -70,6 +70,7 @@ db_open(Package *pkg, char *file)
 
 	while ((len = fgetline(buf, sizeof(buf), fp)) != EOF) {
 		buf[len-1] = '\0'; /* remove trailing newline */
+
 		/* ignore blank lines */
 		if (*buf == '\0' || *buf == '#')
 			continue;

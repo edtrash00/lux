@@ -82,7 +82,7 @@ add(Package *pkg)
 	membuf_vstrcat(&p1, PKG_TMP, pkg->name, "#", pkg->version, "/");
 	membuf_strcat(&p2, PKG_DIR);
 	for (; i < 2; i++) {
-		p = (i == 0) ? (pkg->files).p : (pkg->dirs).p;
+		p = (i == 0) ? (pkg->dirs).p : (pkg->files).p;
 		for (; *p; p += strlen(p)+1) {
 			p1.n -= membuf_strcat(&p1, p);
 			p2.n -= membuf_strcat(&p2, p);
@@ -109,7 +109,7 @@ del(Package *pkg)
 	membuf_strinit(&mp, ptrpool(), sizepool(1)); advpool(mp.a);
 	membuf_strcat(&mp, PKG_DIR);
 	for (; i < 2; i++) {
-		p = (i == 0) ? (pkg->dirs).p : (pkg->files).p;
+		p = (i == 0) ? (pkg->files).p : (pkg->dirs).p;
 		for (; *p; p += strlen(p)+1) {
 			mp.n -= membuf_strcat(&mp, p);
 			if (remove(mp.p) < 0)
@@ -501,7 +501,7 @@ main(int argc, char *argv[])
 
 	db_init(&pkg);
 
-	membuf_strinit(&p, ptrpool(), sizepool(1)); advpool(p.a);
+	membuf_strinit(&p, ptrpool(), sizepool(1));
 	membuf_vstrcat(&p, GETDB((atype == 0) ? type : atype), "/");
 	for (; *argv; argc--, argv++) {
 		p.n -= membuf_strcat(&p, *argv);
@@ -511,8 +511,9 @@ main(int argc, char *argv[])
 			rval = 1;
 			continue;
 		}
-		stackpool.n = p.n;
+		advpool(p.n+1);
 		rval |= fn(&pkg);
+		freepool()
 	}
 
 	db_free(&pkg);
