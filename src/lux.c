@@ -195,17 +195,18 @@ fetch(Package *pkg)
 
 	membuf_strinit(&tmp, ptrpool(), sizepool(1)); advpool(tmp.a);
 	for (; i < 2; i++) {
-		tmp.n -= membuf_vstrcat(&tmp, pkg->name, "#", pkg->version,
-		         (i == 0) ? PKG_SIG : PKG_FMT);
-		if ((fd[i] = open(tmp.p, MODERWCT, DEFFILEMODE)) < 0) {
+		membuf_vstrcat(&tmp, PKG_SRC, pkg->name, "#", pkg->version,
+		               (i == 0) ? PKG_SIG : PKG_FMT);
+		p = tmp.p + sizeof(PKG_SRC)-1;
+		if ((fd[i] = open(p, MODERWCT, DEFFILEMODE)) < 0) {
 			warn("open %s", tmp.p);
 			goto failure;
 		}
 
-		tmp.n -= membuf_vstrcat(&tmp, PKG_SRC,
-		         pkg->name, "#", pkg->version);
 		if (netfd(tmp.p, fd[i], NULL) < 0)
 			goto failure;
+
+		tmp.n = 0;
 	}
 
 	lseek(fd[0], 0, SEEK_SET);
