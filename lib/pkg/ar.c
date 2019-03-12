@@ -121,11 +121,12 @@ unarchive(int tarfd)
 
 		if (fd != -1) {
 			for (; size > 0; size -= sizeof(blk)) {
-				if ((r = read(tarfd, blk, sizeof(blk))) < 0) {
+				if (read(tarfd, blk, sizeof(blk)) < 0) {
 					warn("read %s", fname);
 					goto failure;
 				}
-				if (write(fd, blk, MIN(r, sizeof(blk))) != r) {
+				r = MIN(size, sizeof(blk));
+				if (write(fd, blk, r) != r) {
 					warn("write %s", fname);
 					goto failure;
 				}
