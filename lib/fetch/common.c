@@ -38,12 +38,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <openssl/asn1.h>
-#include <openssl/x509v3.h>
-
 #include <ctype.h>
 #include <errno.h>
+#if defined(HAVE_INTTYPES_H) || defined(NETBSD)
 #include <inttypes.h>
+#endif
 #include <netdb.h>
 #include <pwd.h>
 #include <stdarg.h>
@@ -52,7 +51,16 @@
 #include <string.h>
 #include <unistd.h>
 #include <strings.h>
+
+#ifndef MSG_NOSIGNAL
 #include <signal.h>
+#endif
+
+#ifdef WITH_SSL
+#include <openssl/x509v3.h>
+#include <openssl/asn1.h>
+#endif
+
 #include <pthread.h>
 
 #include "fetch.h"
@@ -612,13 +620,16 @@ fetch_cache_put(conn_t *conn, int (*closecb)(conn_t *))
 	pthread_mutex_unlock(&cache_mtx);
 }
 
-#define strnstr __strnstr
+
+#ifdef WITH_SSL
+
+#ifndef HAVE_STRNSTR
 /*
  * Find the first occurrence of find in s, where the search is limited to the
  * first slen characters of s.
  */
 static char *
-__strnstr(const char *s, const char *find, size_t slen)
+strnstr(const char *s, const char *find, size_t slen)
 {
 	char c, sc;
 	size_t len;
@@ -637,6 +648,7 @@ __strnstr(const char *s, const char *find, size_t slen)
 	}
 	return ((char *)__UNCONST(s));
 }
+#endif
 
 /*
  * Convert characters A-Z to lowercase (intentionally avoid any locale
@@ -829,9 +841,11 @@ fetch_ssl_ipaddr_match_bin(const struct addrinfo *lhost, const char *rhost,
 	if (lhost->ai_family == AF_INET && rhostlen == 4) {
 		left = (void *)&((struct sockaddr_in*)(void *)
 		lhost->ai_addr)->sin_addr.s_addr;
+#ifdef INET6
 	} else if (lhost->ai_family == AF_INET6 && rhostlen == 16) {
 		left = (void *)&((struct sockaddr_in6 *)(void *)
 		lhost->ai_addr)->sin6_addr;
+#endif
 	} else
 		return (0);
 	return (!memcmp(left, (const void *)rhost, rhostlen) ? 1 : 0);
@@ -858,10 +872,12 @@ fetch_ssl_ipaddr_match(const struct addrinfo *laddr, const char *r,
 			rip = (char *)&((struct sockaddr_in *)(void *)
 			raddr->ai_addr)->sin_addr.s_addr;
 			ret = fetch_ssl_ipaddr_match_bin(laddr, rip, 4);
+#ifdef INET6
 		} else if (laddr->ai_family == AF_INET6) {
 			rip = (char *)&((struct sockaddr_in6 *)(void *)
 			raddr->ai_addr)->sin6_addr;
 			ret = fetch_ssl_ipaddr_match_bin(laddr, rip, 16);
+#endif
 		}
 	}
 	freeaddrinfo(raddr);
@@ -1105,6 +1121,8 @@ ssl_init(void)
 	SSL_load_error_strings();
 	SSL_library_init();
 }
+#endif
+
 
 /*
  * Enable SSL on a connection.
@@ -1112,6 +1130,8 @@ ssl_init(void)
 int
 fetch_ssl(conn_t *conn, const struct url *URL, int verbose)
 {
+
+#ifdef WITH_SSL
 	int ret;
 	X509_NAME *name;
 	char *str;
@@ -1188,6 +1208,12 @@ fetch_ssl(conn_t *conn, const struct url *URL, int verbose)
 	}
 
 	return (0);
+#else
+	(void)conn;
+	(void)verbose;
+	fprintf(stderr, "SSL support disabled\n");
+	return (-1);
+#endif
 }
 
 
@@ -1238,10 +1264,10 @@ fetch_read(conn_t *conn, char *buf, size_t len)
 				return (-1);
 			}
 			errno = 0;
-
+#ifdef WITH_SSL
 			if (conn->ssl && SSL_pending(conn->ssl))
 				break;
-
+#endif
 			r = select(conn->sd + 1, &readfds, NULL, NULL, &waittv);
 			if (r == -1) {
 				if (errno == EINTR && fetchRestartCalls)
@@ -1250,12 +1276,12 @@ fetch_read(conn_t *conn, char *buf, size_t len)
 				return (-1);
 			}
 		}
-
+#ifdef WITH_SSL
 		if (conn->ssl != NULL)
 			rlen = SSL_read(conn->ssl, buf, len);
 		else
+#endif
 			rlen = read(conn->sd, buf, len);
-
 		if (rlen >= 0)
 			break;
 
@@ -1342,12 +1368,17 @@ fetch_write(conn_t *conn, const void *buf, size_t len)
 	fd_set writefds;
 	ssize_t wlen, total;
 	int r;
+#ifndef MSG_NOSIGNAL
 	static int killed_sigpipe;
+#endif
 
+#ifndef MSG_NOSIGNAL
 	if (!killed_sigpipe) {
 		signal(SIGPIPE, SIG_IGN);
 		killed_sigpipe = 1;
 	}
+#endif
+
 
 	if (fetchTimeout) {
 		FD_ZERO(&writefds);
@@ -1380,11 +1411,16 @@ fetch_write(conn_t *conn, const void *buf, size_t len)
 			}
 		}
 		errno = 0;
+#ifdef WITH_SSL
 		if (conn->ssl != NULL)
 			wlen = SSL_write(conn->ssl, buf, len);
 		else
+#endif
+#ifndef MSG_NOSIGNAL
 			wlen = send(conn->sd, buf, len, 0);
-
+#else
+			wlen = send(conn->sd, buf, len, MSG_NOSIGNAL);
+#endif
 		if (wlen == 0) {
 			/* we consider a short write a failure */
 			errno = EPIPE;
@@ -1412,6 +1448,7 @@ fetch_close(conn_t *conn)
 {
 	int ret;
 
+#ifdef WITH_SSL
 	if (conn->ssl) {
 		SSL_shutdown(conn->ssl);
 		SSL_set_connect_state(conn->ssl);
@@ -1426,6 +1463,7 @@ fetch_close(conn_t *conn)
 		X509_free(conn->ssl_cert);
 		conn->ssl_cert = NULL;
 	}
+#endif
 	ret = close(conn->sd);
 	if (conn->cache_url)
 		fetchFreeURL(conn->cache_url);

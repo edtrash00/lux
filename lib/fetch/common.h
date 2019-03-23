@@ -62,11 +62,13 @@
 #define SOCKS5_REPLY_CMD_NOTSUP 0x07
 #define SOCKS5_REPLY_ADR_NOTSUP 0x08
 
+#ifdef WITH_SSL
 #include <openssl/crypto.h>
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#endif
 
 #if defined(__GNUC__) && __GNUC__ >= 3
 #define LIBFETCH_PRINTFLIKE(fmtarg, firstvararg)	\
@@ -92,9 +94,11 @@ struct fetchconn {
 	char		*next_buf;	/* pending buffer, e.g. after getln */
 	size_t		 next_len;	/* size of pending buffer */
 	int		 err;		/* last protocol reply code */
+#ifdef WITH_SSL
 	SSL		*ssl;		/* SSL handle */
 	SSL_CTX		*ssl_ctx;	/* SSL context */
 	X509		*ssl_cert;	/* server certificate */
+#endif
 
 	char		*ftp_home;
 
@@ -122,7 +126,9 @@ void		 fetch_cache_put(conn_t *, int (*)(conn_t *));
 int		 fetch_socks5(conn_t *, struct url *, struct url *, int);
 conn_t		*fetch_connect(struct url *, int, int);
 conn_t		*fetch_reopen(int);
+#ifdef WITH_SSL
 int		fetch_ssl_cb_verify_crt(int, X509_STORE_CTX*);
+#endif
 int		 fetch_ssl(conn_t *, const struct url *, int);
 ssize_t		 fetch_read(conn_t *, char *, size_t);
 int		 fetch_getln(conn_t *);
