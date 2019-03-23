@@ -1,6 +1,6 @@
 /*	$NetBSD: file.c,v 1.15 2009/10/15 12:36:57 joerg Exp $	*/
 /*-
- * Copyright (c) 1998-2004 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 1998-2004 Dag-Erling CoÃ¯dan SmÃ¸rav
  * Copyright (c) 2008, 2009 Joerg Sonnenberger <joerg@NetBSD.org>
  * All rights reserved.
  *
@@ -202,6 +202,8 @@ fetchStatFile(struct url *u, struct url_stat *us, const char *flags)
 	char *path;
 	int fd, rv;
 
+	(void)flags;
+
 	if (us == NULL) {
 		fetch_syserr();
 		return -1;
@@ -233,6 +235,8 @@ fetchListFile(struct url_list *ue, struct url *u, const char *pattern, const cha
 	struct dirent *de;
 	DIR *dir;
 	int ret;
+
+	(void)flags;
 
 	if ((path = fetchUnquotePath(u)) == NULL) {
 		fetch_syserr();

@@ -1,6 +1,7 @@
-/*	$NetBSD: http.c,v 1.40 2016/10/21 11:51:18 jperkin Exp $	*/
+/*	$FreeBSD: rev 267127 $	*/
+/*	$NetBSD: http.c,v 1.37 2014/06/11 13:12:12 joerg Exp $	*/
 /*-
- * Copyright (c) 2000-2004 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 2000-2014 Dag-Erling Smorgrav
  * Copyright (c) 2003 Thomas Klausner <wiz@NetBSD.org>
  * Copyright (c) 2008, 2009 Joerg Sonnenberger <joerg@NetBSD.org>
  * All rights reserved.
@@ -27,8 +28,6 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: http.c,v 1.83 2008/02/06 11:39:55 des Exp $
  */
 
 /*
@@ -63,6 +62,10 @@
  * SUCH DAMAGE.
  */
 
+#if defined(__linux__)
+#define _GNU_SOURCE
+#endif
+
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -78,7 +81,9 @@
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+
 #include <netdb.h>
+
 #include <arpa/inet.h>
 
 #include "fetch.h"
@@ -95,7 +100,9 @@
 #define HTTP_MOVED_TEMP		302
 #define HTTP_SEE_OTHER		303
 #define HTTP_NOT_MODIFIED	304
+#define HTTP_USE_PROXY		305
 #define HTTP_TEMP_REDIRECT	307
+#define HTTP_PERM_REDIRECT	308
 #define HTTP_NEED_AUTH		401
 #define HTTP_NEED_PROXY_AUTH	407
 #define HTTP_BAD_RANGE		416
@@ -104,6 +111,7 @@
 #define HTTP_REDIRECT(xyz) ((xyz) == HTTP_MOVED_PERM \
 			    || (xyz) == HTTP_MOVED_TEMP \
 			    || (xyz) == HTTP_TEMP_REDIRECT \
+			    || (xyz) == HTTP_USE_PROXY \
 			    || (xyz) == HTTP_SEE_OTHER)
 
 #define HTTP_ERROR(xyz) ((xyz) > 400 && (xyz) < 599)
@@ -266,7 +274,7 @@ http_readfn(void *v, void *buf, size_t len)
 			if (http_fillbuf(io, len) < 1)
 				break;
 		if (!io->buf)
-			return (-1);
+			return -1;
 		l = io->buflen - io->bufpos;
 		if (len < l)
 			l = len;
@@ -302,12 +310,12 @@ http_closefn(void *v)
 		int val;
 
 		val = 0;
-		(void)setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
-		    sizeof(val));
-		fetch_cache_put(io->conn, fetch_close);
-#if defined(TCP_NOPUSH) && !defined(__APPLE__)
+		setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
+			   sizeof(val));
+			  fetch_cache_put(io->conn, fetch_close);
+#ifdef TCP_NOPUSH
 		val = 1;
-		(void)setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
+		setsockopt(io->conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
 		    sizeof(val));
 #endif
 	} else {
@@ -502,9 +510,16 @@ http_parse_mtime(const char *p, time_t *mtime)
 	char locale[64], *r;
 	struct tm tm;
 
-	snprintf(locale, sizeof(locale), "%s", setlocale(LC_TIME, NULL));
+	strncpy(locale, setlocale(LC_TIME, NULL), sizeof(locale)-1);
+	locale[sizeof(locale)-1] = '\0';
 	setlocale(LC_TIME, "C");
 	r = strptime(p, "%a, %d %b %Y %H:%M:%S GMT", &tm);
+	/*
+	 * Some proxies use UTC in response, but it should still be
+	 * parsed. RFC2616 states GMT and UTC are exactly equal for HTTP.
+	 */
+	if (r == NULL)
+		r = strptime(p, "%a, %d %b %Y %H:%M:%S UTC", &tm);
 	/* XXX should add support for date-2 and date-3 */
 	setlocale(LC_TIME, locale);
 	if (r == NULL)
@@ -666,10 +681,7 @@ http_authorize(conn_t *conn, const char *hdr, const char *p)
 		if ((str = strdup(p)) == NULL)
 			return (-1); /* XXX */
 		user = str;
-		if ((pwd = strchr(str, ':')) == NULL) {
-			free(str);
-			return (-1);
-		}
+		pwd = strchr(str, ':');
 		*pwd++ = '\0';
 		r = http_basic_auth(conn, hdr, user, pwd);
 		free(str);
@@ -684,6 +696,24 @@ http_authorize(conn_t *conn, const char *hdr, const char *p)
  */
 
 /*
+ * Send headers consumed by the proxy server.
+ */
+static void
+send_proxy_headers(conn_t *conn, struct url *purl)
+{
+	char *p;
+
+	/* proxy authorization */
+	if (purl) {
+		if (*purl->user || *purl->pwd)
+			http_basic_auth(conn, "Proxy-Authorization",
+					purl->user, purl->pwd);
+		else if ((p = getenv("HTTP_PROXY_AUTH")) != NULL && *p != '\0')
+			http_authorize(conn, "Proxy-Authorization", p);
+	}
+}
+
+/*
  * Connect to the correct HTTP server or proxy.
  */
 static conn_t *
@@ -691,27 +721,28 @@ http_connect(struct url *URL, struct url *purl, const char *flags, int *cached)
 {
 	struct url *curl;
 	conn_t *conn;
-	hdr_t h;
-	const char *p;
 	int af, verbose;
-#if defined(TCP_NOPUSH) && !defined(__APPLE__)
+#ifdef TCP_NOPUSH
 	int val;
 #endif
 
-	*cached = 0;
-
+#ifdef INET6
 	af = AF_UNSPEC;
+#else
+	af = AF_INET;
+#endif
 
 	verbose = CHECK_FLAG('v');
 	if (CHECK_FLAG('4'))
 		af = AF_INET;
+#ifdef INET6
 	else if (CHECK_FLAG('6'))
 		af = AF_INET6;
-
+#endif
 
 	curl = (purl != NULL) ? purl : URL;
 
-	if ((conn = fetch_cache_get(URL, af)) != NULL) {
+	if ((conn = fetch_cache_get(curl, af)) != NULL) {
 		*cached = 1;
 		return (conn);
 	}
@@ -721,34 +752,21 @@ http_connect(struct url *URL, struct url *purl, const char *flags, int *cached)
 		return (NULL);
 	if (strcasecmp(URL->scheme, SCHEME_HTTPS) == 0 && purl) {
 		http_cmd(conn, "CONNECT %s:%d HTTP/1.1\r\n",
-				URL->host, URL->port);
-		http_cmd(conn, "Host: %s:%d\r\n",
-				URL->host, URL->port);
+		    URL->host, URL->port);
+
+		send_proxy_headers(conn, purl);
+
 		http_cmd(conn, "\r\n");
+
 		if (http_get_reply(conn) != HTTP_OK) {
-			http_seterr(conn->err);
-			goto ouch;
+			fetch_close(conn);
+			return (NULL);
 		}
-		/* Read and discard the rest of the proxy response */
-		if (fetch_getln(conn) < 0) {
-			fetch_syserr();
-			goto ouch;
-		}
-		do {
-			switch ((h = http_next_header(conn, &p))) {
-			case hdr_syserror:
-				fetch_syserr();
-				goto ouch;
-			case hdr_error:
-				http_seterr(HTTP_PROTOCOL_ERROR);
-				goto ouch;
-			default:
-				/* ignore */ ;
-			}
-		} while (h < hdr_end);
+		http_get_reply(conn);
 	}
 	if (strcasecmp(URL->scheme, SCHEME_HTTPS) == 0 &&
 	    fetch_ssl(conn, URL, verbose) == -1) {
+		fetch_close(conn);
 		/* grrr */
 #ifdef EAUTH
 		errno = EAUTH;
@@ -756,19 +774,15 @@ http_connect(struct url *URL, struct url *purl, const char *flags, int *cached)
 		errno = EPERM;
 #endif
 		fetch_syserr();
-		goto ouch;
+		return (NULL);
 	}
 
-#if defined(TCP_NOPUSH) && !defined(__APPLE__)
+#ifdef TCP_NOPUSH
 	val = 1;
-	(void)setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
-	    sizeof(val))
+	setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val, sizeof(val));
 #endif
 
 	return (conn);
-ouch:
-	fetch_close(conn);
-	return (NULL);
 }
 
 static struct url *
@@ -823,7 +837,7 @@ fetchIO *
 http_request(struct url *URL, const char *op, struct url_stat *us,
     struct url *purl, const char *flags)
 {
-	conn_t *conn;
+	conn_t *conn = NULL;
 	struct url *url, *new;
 	int chunked, direct, if_modified_since, need_auth, noredirect;
 	int keep_alive, verbose, cached;
@@ -863,6 +877,7 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 		length = -1;
 		size = -1;
 		mtime = 0;
+		cached = 0;
 
 		/* check port */
 		if (!url->port)
@@ -877,16 +892,19 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 		}
 
 		/* connect to server or proxy */
+		if (conn != NULL)
+			fetch_close(conn);
+
 		if ((conn = http_connect(url, purl, flags, &cached)) == NULL)
 			goto ouch;
 
 		host = url->host;
-
+#ifdef INET6
 		if (strchr(url->host, ':')) {
 			snprintf(hbuf, sizeof(hbuf), "[%s]", url->host);
 			host = hbuf;
 		}
-
+#endif
 		if (url->port != fetch_default_port(url->scheme)) {
 			if (host != hbuf) {
 				strcpy(hbuf, host);
@@ -914,14 +932,8 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 		/* virtual host */
 		http_cmd(conn, "Host: %s\r\n", host);
 
-		/* proxy authorization */
-		if (purl) {
-			if (*purl->user || *purl->pwd)
-				http_basic_auth(conn, "Proxy-Authorization",
-				    purl->user, purl->pwd);
-			else if ((p = getenv("HTTP_PROXY_AUTH")) != NULL && *p != '\0')
-				http_authorize(conn, "Proxy-Authorization", p);
-		}
+		if (strcasecmp(URL->scheme, SCHEME_HTTPS) != 0)
+			send_proxy_headers(conn, purl);
 
 		/* server authorization */
 		if (need_auth || *url->user || *url->pwd) {
@@ -945,12 +957,24 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 			else
 				http_cmd(conn, "Referer: %s\r\n", p);
 		}
-		if ((p = getenv("HTTP_USER_AGENT")) != NULL && *p != '\0')
-			http_cmd(conn, "User-Agent: %s\r\n", p);
-		else
+		if ((p = getenv("HTTP_USER_AGENT")) != NULL) {
+			/* no User-Agent if defined but empty */
+			if (*p != '\0')
+				http_cmd(conn, "User-Agent: %s\r\n", p);
+		} else {
+			/* default User-Agent */
 			http_cmd(conn, "User-Agent: %s\r\n", _LIBFETCH_VER);
+		}
+
+		/*
+		 * Some servers returns 406 (Not Acceptable) if the Accept field is not
+		 * provided by the user agent, such example is http://alioth.debian.org.
+		 */
+		http_cmd(conn, "Accept: */*\r\n");
+
 		if (url->offset > 0)
 			http_cmd(conn, "Range: bytes=%lld-\r\n", (long long)url->offset);
+
 		http_cmd(conn, "\r\n");
 
 		/*
@@ -960,14 +984,14 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 		 * be compatible with such configurations, fiddle with socket
 		 * options to force the pending data to be written.
 		 */
-#if defined(TCP_NOPUSH) && !defined(__APPLE__)
+#ifdef TCP_NOPUSH
 		val = 0;
-		(void)setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
-		    sizeof(val));
+		setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
+			   sizeof(val));
 #endif
 		val = 1;
-		(void)setsockopt(conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
-		    sizeof(val));
+		setsockopt(conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
+			   sizeof(val));
 
 		/* get reply */
 		switch (http_get_reply(conn)) {
@@ -979,6 +1003,7 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 		case HTTP_MOVED_PERM:
 		case HTTP_MOVED_TEMP:
 		case HTTP_SEE_OTHER:
+		case HTTP_USE_PROXY:
 			/*
 			 * Not so fine, but we still have to read the
 			 * headers to get the new location.
@@ -1137,6 +1162,11 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 		goto ouch;
 	}
 
+	/* fill in stats */
+	if (us && size) {
+		us->size = size;
+	}
+
 	/* check for inconsistencies */
 	if (clength != -1 && length != -1 && clength != length) {
 		http_seterr(HTTP_PROTOCOL_ERROR);
@@ -1146,6 +1176,7 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 		clength = length;
 	if (clength != -1)
 		length = offset + clength;
+
 	if (length != -1 && size != -1 && length != size) {
 		http_seterr(HTTP_PROTOCOL_ERROR);
 		goto ouch;
@@ -1169,7 +1200,7 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 	URL->offset = offset;
 	URL->length = clength;
 
-	if (clength == -1 && !chunked)
+	if (clength == -1 && !chunked && conn->err != HTTP_NOT_MODIFIED)
 		keep_alive = 0;
 
 	if (conn->err == HTTP_NOT_MODIFIED) {
@@ -1245,6 +1276,9 @@ fetchGetHTTP(struct url *URL, const char *flags)
 fetchIO *
 fetchPutHTTP(struct url *URL, const char *flags)
 {
+	(void)URL;
+	(void)flags;
+
 	fprintf(stderr, "fetchPutHTTP(): not implemented\n");
 	return (NULL);
 }
@@ -1445,6 +1479,8 @@ fetchListHTTP(struct url_list *ue, struct url *url, const char *pattern, const c
 	struct http_index_cache *cache = NULL;
 	int do_cache, ret;
 
+	(void)pattern;
+
 	do_cache = CHECK_FLAG('c');
 
 	if (do_cache) {
@@ -1464,8 +1500,9 @@ fetchListHTTP(struct url_list *ue, struct url *url, const char *pattern, const c
 			return fetchAppendURLList(ue, &cache->ue);
 		}
 
-		if ((cache = malloc(sizeof(*cache))) == NULL)
-			return (-1);
+		cache = malloc(sizeof(*cache));
+		if (cache == NULL)
+			return -1;
 		fetchInitURLList(&cache->ue);
 		cache->location = fetchCopyURL(url);
 	}

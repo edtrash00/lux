@@ -1,6 +1,6 @@
 /*	$NetBSD: ftp.c,v 1.46 2014/06/11 13:12:12 joerg Exp $	*/
 /*-
- * Copyright (c) 1998-2004 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 1998-2004 Dag-Erling Smorgrav
  * Copyright (c) 2008, 2009, 2010 Joerg Sonnenberger <joerg@NetBSD.org>
  * All rights reserved.
  *
@@ -42,7 +42,7 @@
  *
  * Major Changelog:
  *
- * Dag-Erling Coïdan Smørgrav
+ * Dag-Erling Smograv
  * 9 Jun 1998
  *
  * Incorporated into libfetch
@@ -57,8 +57,14 @@
  *
  */
 
+#ifdef __linux__
+/* Keep this down to Linux, it can create surprises else where. */
+#define _GNU_SOURCE
+#endif
+
 #include <sys/types.h>
 #include <sys/socket.h>
+
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -77,6 +83,10 @@
 #include "fetch.h"
 #include "common.h"
 #include "ftperr.h"
+
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+#endif
 
 static int ftp_cmd(conn_t *, const char *, ...) LIBFETCH_PRINTFLIKE(2, 3);
 #define FTP_ANONYMOUS_USER	"anonymous"
@@ -137,7 +147,7 @@ unmappedaddr(struct sockaddr_in6 *sin6, socklen_t *len)
 	sin4->sin_port = port;
 	sin4->sin_family = AF_INET;
 	*len = sizeof(struct sockaddr_in);
-#ifdef HAVE_SA_LEN
+#ifndef __linux__
 	sin4->sin_len = sizeof(struct sockaddr_in);
 #endif
 }
@@ -329,7 +339,7 @@ ftp_cwd(conn_t *conn, const char *path, int subdir)
 		len = strlen(pwd);
 
 		/* Look for a common prefix between PWD and dir to fetch. */
-		for (i = 0; i <= len && i <= end - dst; ++i)
+		for (i = 0; i < len && i < end - dst; ++i)
 			if (pwd[i] != dst[i])
 				break;
 		/* Keep going up a dir until we have a matching prefix. */
@@ -348,6 +358,7 @@ ftp_cwd(conn_t *conn, const char *path, int subdir)
 	}
 	free(pwd);
 
+#ifdef FTP_COMBINE_CWDS
 	/* Skip leading slashes, even "////". */
 	for (beg = dst + i; beg < end && *beg == '/'; ++beg, ++i)
 		/* nothing */ ;
@@ -364,6 +375,7 @@ ftp_cwd(conn_t *conn, const char *path, int subdir)
 		free(dst);
 		return (0);
 	}
+#endif /* FTP_COMBINE_CWDS */
 
 	/* That didn't work so go back to legacy behavior (multiple CWDs). */
 	for (beg = dst + i; beg < end; beg = dst + i + 1) {
@@ -428,10 +440,6 @@ ftp_mode_type(conn_t *conn, int mode, int type)
 		type = 'A';
 	case 'A':
 		break;
-	case 'd':
-		type = 'D';
-	case 'D':
-		/* can't handle yet */
 	default:
 		return (FTP_PROTOCOL_ERROR);
 	}
@@ -596,7 +604,7 @@ ftp_writefn(void *v, const void *buf, size_t len)
 static int
 ftp_disconnect(conn_t *conn)
 {
-	(void)ftp_cmd(conn, "QUIT\r\n");
+	ftp_cmd(conn, "QUIT\r\n");
 	return fetch_close(conn);
 }
 
@@ -1011,7 +1019,11 @@ ftp_connect(struct url *url, struct url *purl, const char *flags)
 {
 	conn_t *conn;
 	int e, direct, verbose;
+#ifdef INET6
 	int af = AF_UNSPEC;
+#else
+	int af = AF_INET;
+#endif
 
 	direct = CHECK_FLAG('d');
 	verbose = CHECK_FLAG('v');

@@ -1,6 +1,7 @@
-/*	$NetBSD: common.h,v 1.24 2016/10/20 21:25:57 joerg Exp $	*/
+/*	$FreeBSD: rev 267133 $	*/
+/*	$NetBSD: common.h,v 1.23 2014/01/08 20:25:34 joerg Exp $	*/
 /*-
- * Copyright (c) 1998-2004 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 1998-2014 Dag-Erling Smorgrav
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +26,6 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: common.h,v 1.30 2007/12/18 11:03:07 des Exp $
  */
 
 #ifndef _COMMON_H_INCLUDED
@@ -34,8 +33,34 @@
 
 #define FTP_DEFAULT_PORT	21
 #define HTTP_DEFAULT_PORT	80
+#define HTTPS_DEFAULT_PORT	443
 #define FTP_DEFAULT_PROXY_PORT	21
 #define HTTP_DEFAULT_PROXY_PORT	3128
+#define SOCKS5_DEFAULT_PORT	1080
+
+#define SOCKS5_VERSION		0x05
+#define SOCKS5_PASS_VERSION	0x01
+
+#define SOCKS5_NO_AUTH		0x00
+#define SOCKS5_USER_PASS	0x02
+#define SOCKS5_AUTH_SUCCESS	0x00
+#define SOCKS5_NO_METHOD	0xFF
+
+#define SOCKS5_TCP_STREAM	0x01
+
+#define SOCKS5_ATYPE_IPV4	0x01
+#define SOCKS5_ATYPE_DOMAIN	0x03
+#define SOCKS5_ATYPE_IPV6	0x04
+
+#define SOCKS5_REPLY_SUCCESS	0x00
+#define SOCKS5_REPLY_FAILURE	0x01
+#define SOCKS5_REPLY_DENY	0x02
+#define SOCKS5_REPLY_NO_NET	0x03
+#define SOCKS5_REPLY_NO_HOST	0x04
+#define SOCKS5_REPLY_REFUSED	0x05
+#define SOCKS5_REPLY_TIMEOUT	0x06
+#define SOCKS5_REPLY_CMD_NOTSUP 0x07
+#define SOCKS5_REPLY_ADR_NOTSUP 0x08
 
 #include <openssl/crypto.h>
 #include <openssl/x509.h>
@@ -64,15 +89,15 @@ struct fetchconn {
 	char		*buf;		/* buffer */
 	size_t		 bufsize;	/* buffer size */
 	size_t		 buflen;	/* length of buffer contents */
-	int		 buf_events;	/* poll flags for the next cycle */
 	char		*next_buf;	/* pending buffer, e.g. after getln */
 	size_t		 next_len;	/* size of pending buffer */
 	int		 err;		/* last protocol reply code */
 	SSL		*ssl;		/* SSL handle */
 	SSL_CTX		*ssl_ctx;	/* SSL context */
 	X509		*ssl_cert;	/* server certificate */
-	const SSL_METHOD *ssl_meth;	/* SSL method */
+
 	char		*ftp_home;
+
 	struct url	*cache_url;
 	int		cache_af;
 	int		(*cache_close)(conn_t *);
@@ -94,8 +119,10 @@ int		 fetch_default_proxy_port(const char *);
 int		 fetch_bind(int, int, const char *);
 conn_t		*fetch_cache_get(const struct url *, int);
 void		 fetch_cache_put(conn_t *, int (*)(conn_t *));
+int		 fetch_socks5(conn_t *, struct url *, struct url *, int);
 conn_t		*fetch_connect(struct url *, int, int);
 conn_t		*fetch_reopen(int);
+int		fetch_ssl_cb_verify_crt(int, X509_STORE_CTX*);
 int		 fetch_ssl(conn_t *, const struct url *, int);
 ssize_t		 fetch_read(conn_t *, char *, size_t);
 int		 fetch_getln(conn_t *);
@@ -133,5 +160,9 @@ fetchIO		*ftp_request(struct url *, const char *, const char *,
  * Check whether a particular flag is set
  */
 #define CHECK_FLAG(x)	(flags && strchr(flags, (x)))
+
+#ifndef __UNCONST
+#define __UNCONST(a)    ((void *)(unsigned long)(const void *)(a))
+#endif
 
 #endif

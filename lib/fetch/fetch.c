@@ -1,6 +1,7 @@
+/*	$FreeBSD: rev 252375 $ */
 /*	$NetBSD: fetch.c,v 1.19 2009/08/11 20:48:06 joerg Exp $	*/
 /*-
- * Copyright (c) 1998-2004 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 1998-2004 Dag-Erling CoÃ¯dan SmÃ¸rav
  * Copyright (c) 2008 Joerg Sonnenberger <joerg@NetBSD.org>
  * All rights reserved.
  *
@@ -26,8 +27,6 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: fetch.c,v 1.41 2007/12/19 00:26:36 des Exp $
  */
 
 #include <ctype.h>
@@ -35,6 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #include "fetch.h"
 #include "common.h"
@@ -127,6 +127,7 @@ fetchPut(struct url *URL, const char *flags)
 int
 fetchStat(struct url *URL, struct url_stat *us, const char *flags)
 {
+
 	if (us != NULL) {
 		us->size = -1;
 		us->atime = us->mtime = 0;
@@ -288,6 +289,48 @@ fetchMakeURL(const char *scheme, const char *host, int port, const char *doc,
 	return (u);
 }
 
+/*
+ * Return value of the given hex digit.
+ */
+static int
+fetch_hexval(char ch)
+{
+	if (ch >= '0' && ch <= '9')
+		return (ch - '0');
+	else if (ch >= 'a' && ch <= 'f')
+		return (ch - 'a' + 10);
+	else if (ch >= 'A' && ch <= 'F')
+		return (ch - 'A' + 10);
+	return (-1);
+}
+
+/*
+ * Decode percent-encoded URL component from src into dst, stopping at end
+ * of string, or at @ or : separators.  Returns a pointer to the unhandled
+ * part of the input string (null terminator, @, or :).  No terminator is
+ * written to dst (it is the caller's responsibility).
+ */
+static const char *
+fetch_pctdecode(char *dst, const char *src, size_t dlen)
+{
+	int d1, d2;
+	char c;
+	const char *s;
+
+	for (s = src; *s != '\0' && *s != '@' && *s != ':'; s++) {
+		if (s[0] == '%' && (d1 = fetch_hexval(s[1])) >= 0 &&
+		    (d2 = fetch_hexval(s[2])) >= 0 && (d1 > 0 || d2 > 0)) {
+			c = d1 << 4 | d2;
+			s += 2;
+		} else {
+			c = *s;
+		}
+		if (dlen-- > 0)
+			*dst++ = c;
+	}
+	return (s);
+}
+
 int
 fetch_urlpath_safe(char x)
 {
@@ -381,7 +424,8 @@ fetchParseURL(const char *URL)
 			url_seterr(URL_MALFORMED);
 			goto ouch;
 		}
-		p = URL + 2;
+		URL += 2;
+		p = URL;
 		goto quote_doc;
 	}
 	if (strncmp(URL, "http:", 5) == 0 ||
@@ -413,6 +457,17 @@ fetchParseURL(const char *URL)
 		URL += 2;
 		goto find_user;
 	}
+	if (strncmp(URL, "socks5:", 7) == 0) {
+		pre_quoted = 1;
+		strcpy(u->scheme, SCHEME_SOCKS5);
+		URL += 7;
+		if (URL[0] != '/' || URL[1] != '/') {
+			url_seterr(URL_MALFORMED);
+			goto ouch;
+		}
+		URL += 2;
+		goto find_user;
+	}
 
 	url_seterr(URL_BAD_SCHEME);
 	goto ouch;
@@ -421,17 +476,10 @@ find_user:
 	p = strpbrk(URL, "/@");
 	if (p != NULL && *p == '@') {
 		/* username */
-		for (q = URL, i = 0; (*q != ':') && (*q != '@'); q++) {
-			if (i < URL_USERLEN)
-				u->user[i++] = *q;
-		}
-
+		q = fetch_pctdecode(u->user, URL, URL_USERLEN);
 		/* password */
-		if (*q == ':') {
-			for (q++, i = 0; (*q != '@'); q++)
-				if (i < URL_PWDLEN)
-					u->pwd[i++] = *q;
-		}
+		if (*q == ':')
+			q = fetch_pctdecode(u->pwd, q + 1, URL_PWDLEN);
 
 		p++;
 	} else {
@@ -439,17 +487,18 @@ find_user:
 	}
 
 	/* hostname */
+#ifdef INET6
 	if (*p == '[' && (q = strchr(p + 1, ']')) != NULL &&
 	    (*++q == '\0' || *q == '/' || *q == ':')) {
 		if ((i = q - p - 2) > URL_HOSTLEN)
 			i = URL_HOSTLEN;
 		strncpy(u->host, ++p, i);
 		p = q;
-	} else {
+	} else
+#endif
 		for (i = 0; *p && (*p != '/') && (*p != ':'); p++)
 			if (i < URL_HOSTLEN)
 				u->host[i++] = *p;
-	}
 
 	/* port */
 	if (*p == ':') {

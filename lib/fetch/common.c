@@ -1,7 +1,9 @@
-/*	$NetBSD: common.c,v 1.31 2016/10/20 21:25:57 joerg Exp $	*/
+/*	$FreeBSD: rev 288217 $	*/
+/*	$NetBSD: common.c,v 1.29 2014/01/08 20:25:34 joerg Exp $	*/
 /*-
- * Copyright (c) 1998-2004 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 1998-2014 Dag-Erling Smorgrav
  * Copyright (c) 2008, 2010 Joerg Sonnenberger <joerg@NetBSD.org>
+ * Copyright (c) 2013 Michael Gmelin <freebsd@grem.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,17 +28,17 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: common.c,v 1.53 2007/12/19 00:26:36 des Exp $
  */
 
-#include <poll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/uio.h>
+
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+#include <openssl/x509v3.h>
 
 #include <ctype.h>
 #include <errno.h>
@@ -48,9 +50,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <strings.h>
+#include <signal.h>
+#include <pthread.h>
 
 #include "fetch.h"
 #include "common.h"
+
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+#endif
 
 /*** Local data **************************************************************/
 
@@ -148,7 +157,7 @@ fetch_syserr(void)
 	case EHOSTDOWN:
 		fetchLastErrCode = FETCH_DOWN;
 		break;
-	default:
+default:
 		fetchLastErrCode = FETCH_UNKNOWN;
 	}
 	snprintf(fetchLastErrString, MAXERRSTRING, "%s", strerror(errno));
@@ -180,12 +189,16 @@ fetch_default_port(const char *scheme)
 {
 	struct servent *se;
 
-	if ((se = getservbyname(scheme, "tcp")) != NULL)
-		return (ntohs(se->s_port));
 	if (strcasecmp(scheme, SCHEME_FTP) == 0)
 		return (FTP_DEFAULT_PORT);
 	if (strcasecmp(scheme, SCHEME_HTTP) == 0)
 		return (HTTP_DEFAULT_PORT);
+	if (strcasecmp(scheme, SCHEME_HTTPS) == 0)
+		return (HTTPS_DEFAULT_PORT);
+	if (strcasecmp(scheme, SCHEME_SOCKS5) == 0)
+		return (SOCKS5_DEFAULT_PORT);
+	if ((se = getservbyname(scheme, "tcp")) != NULL)
+		return (ntohs(se->s_port));
 	return (0);
 }
 
@@ -219,7 +232,6 @@ fetch_reopen(int sd)
 	conn->next_buf = NULL;
 	conn->next_len = 0;
 	conn->sd = sd;
-	conn->buf_events = POLLIN;
 	return (conn);
 }
 
@@ -231,28 +243,169 @@ int
 fetch_bind(int sd, int af, const char *addr)
 {
 	struct addrinfo hints, *res, *res0;
-	int rval;
-
-	rval = 0;
+	int rv = -1;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = af;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = 0;
 	if (getaddrinfo(addr, NULL, &hints, &res0))
-		goto fail;
+		return (-1);
 	for (res = res0; res; res = res->ai_next) {
-		if (bind(sd, res->ai_addr, res->ai_addrlen) == 0)
-			goto end;
+		if (bind(sd, res->ai_addr, res->ai_addrlen) == 0) {
+			rv = 0;
+			break;
+		}
 	}
-
-fail:
-	rval = -1;
-end:
 	freeaddrinfo(res0);
-	return rval;
+	return rv;
 }
 
+int
+fetch_socks5(conn_t *conn, struct url *url, struct url *socks, int verbose)
+{
+	char buf[16];
+	uint8_t auth;
+	size_t alen;
+
+	alen = strlen(url->host);
+	auth = (*socks->user != '\0' && *socks->pwd != '\0')
+	    ? SOCKS5_USER_PASS : SOCKS5_NO_AUTH;
+
+	buf[0] = SOCKS5_VERSION;
+	buf[1] = 0x01; /* number of auth methods */
+	buf[2] = auth;
+	if (fetch_write(conn, buf, 3) != 3)
+		return -1;
+
+	if (fetch_read(conn, buf, 2) != 2)
+		return -1;
+
+	if (buf[0] != SOCKS5_VERSION) {
+		if (verbose)
+			fetch_info("socks5 version not recognized");
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((uint8_t)buf[1] == SOCKS5_NO_METHOD) {
+		if (verbose)
+			fetch_info("no acceptable socks5 authentication method");
+		errno = EPERM;
+		return -1;
+	}
+
+	switch (buf[1]) {
+	case SOCKS5_USER_PASS:
+		if (verbose)
+			fetch_info("authenticate socks5 user '%s'", socks->user);
+		buf[0] = SOCKS5_PASS_VERSION;
+		buf[1] = strlen(socks->user);
+		if (fetch_write(conn, buf, 2) != 2)
+			return -1;
+		if (fetch_write(conn, socks->user, buf[1]) == -1)
+			return -1;
+
+		buf[0] = strlen(socks->pwd);
+		if (fetch_write(conn, buf, 1) != 1)
+			return -1;
+		if (fetch_write(conn, socks->pwd, buf[0]) == -1)
+			return -1;
+
+		if (fetch_read(conn, buf, 2) != 2)
+			return -1;
+
+		if (buf[0] != SOCKS5_PASS_VERSION) {
+			if (verbose)
+				fetch_info("socks5 password version not recognized");
+			errno = EINVAL;
+			return -1;
+		}
+
+		if (verbose)
+			fetch_info("socks5 authentication response %d", buf[1]);
+
+		if (buf[1] != SOCKS5_AUTH_SUCCESS) {
+			if (verbose)
+				fetch_info("socks5 authentication failed");
+			errno = EPERM;
+			return -1;
+		}
+
+		break;
+	}
+
+	if (verbose)
+		fetch_info("connecting socks5 to %s:%d", url->host, url->port);
+
+	/* write request */
+	buf[0] = SOCKS5_VERSION;
+	buf[1] = SOCKS5_TCP_STREAM;
+	buf[2] = 0x00;
+	buf[3] = SOCKS5_ATYPE_DOMAIN;
+	buf[4] = alen;
+	if (fetch_write(conn, buf, 5) != 5)
+		return -1;
+
+	if (fetch_write(conn, url->host, alen) == -1)
+		return -1;
+
+	buf[0] = (url->port >> 0x08);
+	buf[1] = (url->port & 0xFF);
+	if (fetch_write(conn, buf, 2) != 2)
+		return -1;
+
+	/* read answer */
+	if (fetch_read(conn, buf, 4) != 4)
+		return -1;
+
+	if (buf[0] != SOCKS5_VERSION) {
+		if (verbose)
+			fetch_info("socks5 version not recognized");
+		errno = EINVAL;
+		return -1;
+	}
+
+	/* answer status */
+	if (buf[1] != SOCKS5_REPLY_SUCCESS) {
+		if (verbose)
+			fetch_info("socks5 response status %d", buf[1]);
+		switch (buf[1]) {
+		case SOCKS5_REPLY_DENY: errno = EACCES; break;
+		case SOCKS5_REPLY_NO_NET: errno = ENETUNREACH; break;
+		case SOCKS5_REPLY_NO_HOST: errno = EHOSTUNREACH; break;
+		case SOCKS5_REPLY_REFUSED: errno = ECONNREFUSED; break;
+		case SOCKS5_REPLY_TIMEOUT: errno = ETIMEDOUT; break;
+		case SOCKS5_REPLY_CMD_NOTSUP: errno = ENOTSUP; break;
+		case SOCKS5_REPLY_ADR_NOTSUP: errno = ENOTSUP; break;
+		}
+		return -1;
+	}
+
+	switch (buf[3]) {
+	case SOCKS5_ATYPE_IPV4:
+		if (fetch_read(conn, buf, 4) != 4)
+			return -1;
+		break;
+	case SOCKS5_ATYPE_DOMAIN:
+		if (fetch_read(conn, buf, 1) != 1 &&
+		    fetch_read(conn, buf, buf[0]) != buf[0])
+			return -1;
+		break;
+	case SOCKS5_ATYPE_IPV6:
+		if (fetch_read(conn, buf, 16) != 16)
+			return -1;
+		break;
+	default:
+		return -1;
+	}
+
+	// port
+	if (fetch_read(conn, buf, 2) != 2)
+		return -1;
+
+	return 0;
+}
 
 /*
  * Establish a TCP connection to the specified port on the specified host.
@@ -262,27 +415,45 @@ fetch_connect(struct url *url, int af, int verbose)
 {
 	conn_t *conn;
 	char pbuf[10];
-	const char *bindaddr;
+	struct url *socks_url, *connurl;
+	const char *bindaddr, *socks_proxy;
 	struct addrinfo hints, *res, *res0;
 	int sd, error;
 
+	socks_url = NULL;
+	socks_proxy = getenv("SOCKS_PROXY");
+	if (socks_proxy != NULL && *socks_proxy != '\0') {
+		if (!(socks_url = fetchParseURL(socks_proxy)))
+			return NULL;
+		if (strcasecmp(socks_url->scheme, SCHEME_SOCKS5) != 0) {
+			if (verbose)
+				fetch_info("SOCKS_PROXY scheme '%s' not supported", socks_url->scheme);
+			return NULL;
+		}
+		if (!socks_url->port)
+			socks_url->port = fetch_default_port(socks_url->scheme);
+		connurl = socks_url;
+	} else {
+		connurl = url;
+	}
+
 	if (verbose)
-		fetch_info("looking up %s", url->host);
+		fetch_info("looking up %s", connurl->host);
 
 	/* look up host name and set up socket address structure */
-	snprintf(pbuf, sizeof(pbuf), "%d", url->port);
+	snprintf(pbuf, sizeof(pbuf), "%d", connurl->port);
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = af;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = 0;
-	if ((error = getaddrinfo(url->host, pbuf, &hints, &res0)) != 0) {
+	if ((error = getaddrinfo(connurl->host, pbuf, &hints, &res0)) != 0) {
 		netdb_seterr(error);
 		return (NULL);
 	}
 	bindaddr = getenv("FETCH_BIND_ADDRESS");
 
 	if (verbose)
-		fetch_info("connecting to %s:%d", url->host, url->port);
+		fetch_info("connecting to %s:%d", connurl->host, connurl->port);
 
 	/* try to connect */
 	for (sd = -1, res = res0; res; sd = -1, res = res->ai_next) {
@@ -308,13 +479,24 @@ fetch_connect(struct url *url, int af, int verbose)
 	if ((conn = fetch_reopen(sd)) == NULL) {
 		fetch_syserr();
 		close(sd);
-		return (NULL);
+		return NULL;
+	}
+	if (socks_url) {
+		if (strcasecmp(socks_url->scheme, SCHEME_SOCKS5) == 0) {
+			if (fetch_socks5(conn, url, socks_url, verbose) != 0) {
+				fetch_syserr();
+				close(sd);
+				free(conn);
+				return NULL;
+			}
+		}
 	}
 	conn->cache_url = fetchCopyURL(url);
 	conn->cache_af = af;
 	return (conn);
 }
 
+static pthread_mutex_t cache_mtx = PTHREAD_MUTEX_INITIALIZER;
 static conn_t *connection_cache;
 static int cache_global_limit = 0;
 static int cache_per_host_limit = 0;
@@ -361,6 +543,7 @@ fetch_cache_get(const struct url *url, int af)
 {
 	conn_t *conn, *last_conn = NULL;
 
+	pthread_mutex_lock(&cache_mtx);
 	for (conn = connection_cache; conn; conn = conn->next_cached) {
 		if (conn->cache_url->port == url->port &&
 		    strcmp(conn->cache_url->scheme, url->scheme) == 0 &&
@@ -373,9 +556,12 @@ fetch_cache_get(const struct url *url, int af)
 				last_conn->next_cached = conn->next_cached;
 			else
 				connection_cache = conn->next_cached;
+
+			pthread_mutex_unlock(&cache_mtx);
 			return conn;
 		}
 	}
+	pthread_mutex_unlock(&cache_mtx);
 
 	return NULL;
 }
@@ -396,6 +582,7 @@ fetch_cache_put(conn_t *conn, int (*closecb)(conn_t *))
 		return;
 	}
 
+	pthread_mutex_lock(&cache_mtx);
 	global_count = host_count = 0;
 	last = NULL;
 	for (iter = connection_cache; iter;
@@ -417,6 +604,501 @@ fetch_cache_put(conn_t *conn, int (*closecb)(conn_t *))
 	conn->cache_close = closecb;
 	conn->next_cached = connection_cache;
 	connection_cache = conn;
+	pthread_mutex_unlock(&cache_mtx);
+}
+
+#define strnstr __strnstr
+/*
+ * Find the first occurrence of find in s, where the search is limited to the
+ * first slen characters of s.
+ */
+static char *
+__strnstr(const char *s, const char *find, size_t slen)
+{
+	char c, sc;
+	size_t len;
+
+	if ((c = *find++) != '\0') {
+		len = strlen(find);
+		do {
+			do {
+				if (slen-- < 1 || (sc = *s++) == '\0')
+					return (NULL);
+			} while (sc != c);
+			if (len > slen)
+				return (NULL);
+		} while (strncmp(s, find, len) != 0);
+		s--;
+	}
+	return ((char *)__UNCONST(s));
+}
+
+/*
+ * Convert characters A-Z to lowercase (intentionally avoid any locale
+ * specific conversions).
+ */
+static char
+fetch_ssl_tolower(char in)
+{
+	if (in >= 'A' && in <= 'Z')
+		return (in + 32);
+	else
+		return (in);
+}
+
+/*
+ * isalpha implementation that intentionally avoids any locale specific
+ * conversions.
+ */
+static int
+fetch_ssl_isalpha(char in)
+{
+	return ((in >= 'A' && in <= 'Z') || (in >= 'a' && in <= 'z'));
+}
+
+/*
+ * Check if passed hostnames a and b are equal.
+ */
+static int
+fetch_ssl_hname_equal(const char *a, size_t alen, const char *b,
+    size_t blen)
+{
+	size_t i;
+
+	if (alen != blen)
+		return (0);
+	for (i = 0; i < alen; ++i) {
+		if (fetch_ssl_tolower(a[i]) != fetch_ssl_tolower(b[i]))
+			return (0);
+	}
+	return (1);
+}
+
+/*
+ * Check if domain label is traditional, meaning that only A-Z, a-z, 0-9
+ * and '-' (hyphen) are allowed. Hyphens have to be surrounded by alpha-
+ * numeric characters. Double hyphens (like they're found in IDN a-labels
+ * 'xn--') are not allowed. Empty labels are invalid.
+ */
+static int
+fetch_ssl_is_trad_domain_label(const char *l, size_t len, int wcok)
+{
+	size_t i;
+
+	if (!len || l[0] == '-' || l[len-1] == '-')
+		return (0);
+	for (i = 0; i < len; ++i) {
+		if (!isdigit(l[i]) &&
+		    !fetch_ssl_isalpha(l[i]) &&
+		    !(l[i] == '*' && wcok) &&
+		    !(l[i] == '-' && l[i - 1] != '-'))
+			return (0);
+	}
+	return (1);
+}
+
+/*
+ * Check if host name consists only of numbers. This might indicate an IP
+ * address, which is not a good idea for CN wildcard comparison.
+ */
+static int
+fetch_ssl_hname_is_only_numbers(const char *hostname, size_t len)
+{
+	size_t i;
+
+	for (i = 0; i < len; ++i) {
+		if (!((hostname[i] >= '0' && hostname[i] <= '9') ||
+		    hostname[i] == '.'))
+			return (0);
+	}
+	return (1);
+}
+
+/*
+ * Check if the host name h passed matches the pattern passed in m which
+ * is usually part of subjectAltName or CN of a certificate presented to
+ * the client. This includes wildcard matching. The algorithm is based on
+ * RFC6125, sections 6.4.3 and 7.2, which clarifies RFC2818 and RFC3280.
+  */
+static int
+fetch_ssl_hname_match(const char *h, size_t hlen, const char *m,
+    size_t mlen)
+{
+	int delta, hdotidx, mdot1idx, wcidx;
+	const char *hdot, *mdot1, *mdot2;
+	const char *wc; /* wildcard */
+
+	if (!(h && *h && m && *m))
+		return (0);
+	if ((wc = strnstr(m, "*", mlen)) == NULL)
+		return (fetch_ssl_hname_equal(h, hlen, m, mlen));
+	wcidx = wc - m;
+	/* hostname should not be just dots and numbers */
+	if (fetch_ssl_hname_is_only_numbers(h, hlen))
+		return (0);
+	/* only one wildcard allowed in pattern */
+	if (strnstr(wc + 1, "*", mlen - wcidx - 1) != NULL)
+		return (0);
+	/*
+	 * there must be at least two more domain labels and
+	 * wildcard has to be in the leftmost label (RFC6125)
+	 */
+	mdot1 = strnstr(m, ".", mlen);
+	if (mdot1 == NULL || mdot1 < wc || (mlen - (mdot1 - m)) < 4)
+		return (0);
+	mdot1idx = mdot1 - m;
+		mdot2 = strnstr(mdot1 + 1, ".", mlen - mdot1idx - 1);
+	if (mdot2 == NULL || (mlen - (mdot2 - m)) < 2)
+		return (0);
+	/* hostname must contain a dot and not be the 1st char */
+	hdot = strnstr(h, ".", hlen);
+	if (hdot == NULL || hdot == h)
+		return (0);
+	hdotidx = hdot - h;
+	/*
+	 * host part of hostname must be at least as long as
+	 * pattern it's supposed to match
+	 */
+	if (hdotidx < mdot1idx)
+		return (0);
+	/*
+	 * don't allow wildcards in non-traditional domain names
+	 * (IDN, A-label, U-label...)
+	 */
+	if (!fetch_ssl_is_trad_domain_label(h, hdotidx, 0) ||
+	    !fetch_ssl_is_trad_domain_label(m, mdot1idx, 1))
+		return (0);
+	/* match domain part (part after first dot) */
+	if (!fetch_ssl_hname_equal(hdot, hlen - hdotidx, mdot1,
+	    mlen - mdot1idx))
+		return (0);
+	/* match part left of wildcard */
+	if (!fetch_ssl_hname_equal(h, wcidx, m, wcidx))
+		return (0);
+	/* match part right of wildcard */
+	delta = mdot1idx - wcidx - 1;
+	if (!fetch_ssl_hname_equal(hdot - delta, delta,
+	    mdot1 - delta, delta))
+		return (0);
+	/* all tests succeded, it's a match */
+	return (1);
+}
+
+/*
+ * Get numeric host address info - returns NULL if host was not an IP
+ * address. The caller is responsible for deallocation using
+ * freeaddrinfo(3).
+ */
+static struct addrinfo *
+fetch_ssl_get_numeric_addrinfo(const char *hostname, size_t len)
+{
+	struct addrinfo hints, *res;
+	char *host;
+
+	host = (char *)malloc(len + 1);
+	memcpy(host, hostname, len);
+	host[len] = '\0';
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = PF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = 0;
+	hints.ai_flags = AI_NUMERICHOST;
+	/* port is not relevant for this purpose */
+	if (getaddrinfo(host, "443", &hints, &res) != 0) {
+		free(host);
+		return NULL;
+	}
+	free(host);
+	return res;
+}
+
+/*
+ * Compare ip address in addrinfo with address passes.
+ */
+static int
+fetch_ssl_ipaddr_match_bin(const struct addrinfo *lhost, const char *rhost,
+    size_t rhostlen)
+{
+	const void *left;
+
+	if (lhost->ai_family == AF_INET && rhostlen == 4) {
+		left = (void *)&((struct sockaddr_in*)(void *)
+		lhost->ai_addr)->sin_addr.s_addr;
+	} else if (lhost->ai_family == AF_INET6 && rhostlen == 16) {
+		left = (void *)&((struct sockaddr_in6 *)(void *)
+		lhost->ai_addr)->sin6_addr;
+	} else
+		return (0);
+	return (!memcmp(left, (const void *)rhost, rhostlen) ? 1 : 0);
+}
+
+/*
+ * Compare ip address in addrinfo with host passed. If host is not an IP
+ * address, comparison will fail.
+ */
+static int
+fetch_ssl_ipaddr_match(const struct addrinfo *laddr, const char *r,
+    size_t rlen)
+{
+	struct addrinfo *raddr;
+	int ret;
+	char *rip;
+
+	ret = 0;
+	if ((raddr = fetch_ssl_get_numeric_addrinfo(r, rlen)) == NULL)
+		return 0; /* not a numeric host */
+
+	if (laddr->ai_family == raddr->ai_family) {
+		if (laddr->ai_family == AF_INET) {
+			rip = (char *)&((struct sockaddr_in *)(void *)
+			raddr->ai_addr)->sin_addr.s_addr;
+			ret = fetch_ssl_ipaddr_match_bin(laddr, rip, 4);
+		} else if (laddr->ai_family == AF_INET6) {
+			rip = (char *)&((struct sockaddr_in6 *)(void *)
+			raddr->ai_addr)->sin6_addr;
+			ret = fetch_ssl_ipaddr_match_bin(laddr, rip, 16);
+		}
+	}
+	freeaddrinfo(raddr);
+	return (ret);
+}
+
+/*
+ * Verify server certificate by subjectAltName.
+ */
+static int
+fetch_ssl_verify_altname(STACK_OF(GENERAL_NAME) *altnames,
+    const char *host, struct addrinfo *ip)
+{
+	const GENERAL_NAME *name;
+	size_t nslen;
+	int i;
+	const char *ns;
+
+	for (i = 0; i < sk_GENERAL_NAME_num(altnames); ++i) {
+		name = sk_GENERAL_NAME_value(altnames, i);
+		ns = (const char *)ASN1_STRING_get0_data(name->d.ia5);
+		nslen = (size_t)ASN1_STRING_length(name->d.ia5);
+
+		if (name->type == GEN_DNS && ip == NULL &&
+		    fetch_ssl_hname_match(host, strlen(host), ns, nslen))
+			return (1);
+		else if (name->type == GEN_IPADD && ip != NULL &&
+		    fetch_ssl_ipaddr_match_bin(ip, ns, nslen))
+			return (1);
+	}
+	return (0);
+}
+
+/*
+ * Verify server certificate by CN.
+ */
+static int
+fetch_ssl_verify_cn(X509_NAME *subject, const char *host,
+    struct addrinfo *ip)
+{
+	ASN1_STRING *namedata;
+	X509_NAME_ENTRY *nameentry;
+	int cnlen, lastpos, loc, ret;
+	unsigned char *cn;
+
+	ret = 0;
+	lastpos = -1;
+	loc = -1;
+	cn = NULL;
+	/* get most specific CN (last entry in list) and compare */
+	while ((lastpos = X509_NAME_get_index_by_NID(subject,
+		    NID_commonName, lastpos)) != -1)
+		loc = lastpos;
+
+	if (loc > -1) {
+		nameentry = X509_NAME_get_entry(subject, loc);
+		namedata = X509_NAME_ENTRY_get_data(nameentry);
+		cnlen = ASN1_STRING_to_UTF8(&cn, namedata);
+		if (ip == NULL &&
+		    fetch_ssl_hname_match(host, strlen(host), (const char *)cn, cnlen))
+			ret = 1;
+		else if (ip != NULL && fetch_ssl_ipaddr_match(ip, (const char *)cn, cnlen))
+			ret = 1;
+		OPENSSL_free(cn);
+	}
+	return (ret);
+}
+
+/*
+ * Verify that server certificate subjectAltName/CN matches
+ * hostname. First check, if there are alternative subject names. If yes,
+ * those have to match. Only if those don't exist it falls back to
+ * checking the subject's CN.
+ */
+static int
+fetch_ssl_verify_hname(X509 *cert, const char *host)
+{
+	struct addrinfo *ip;
+	STACK_OF(GENERAL_NAME) *altnames;
+	X509_NAME *subject;
+	int ret;
+
+	ret = 0;
+	ip = fetch_ssl_get_numeric_addrinfo(host, strlen(host));
+	altnames = X509_get_ext_d2i(cert, NID_subject_alt_name,
+				    NULL, NULL);
+
+	if (altnames != NULL) {
+		ret = fetch_ssl_verify_altname(altnames, host, ip);
+	} else {
+		subject = X509_get_subject_name(cert);
+		if (subject != NULL)
+			ret = fetch_ssl_verify_cn(subject, host, ip);
+	}
+
+	if (ip != NULL)
+		freeaddrinfo(ip);
+	if (altnames != NULL)
+		GENERAL_NAMES_free(altnames);
+	return (ret);
+}
+
+/*
+ * Configure transport security layer based on environment.
+ */
+static void
+fetch_ssl_setup_transport_layer(SSL_CTX *ctx, int verbose)
+{
+	long ssl_ctx_options;
+
+	ssl_ctx_options = SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_TICKET;
+	if (getenv("SSL_ALLOW_SSL3") == NULL)
+		ssl_ctx_options |= SSL_OP_NO_SSLv3;
+	if (getenv("SSL_NO_TLS1") != NULL)
+		ssl_ctx_options |= SSL_OP_NO_TLSv1;
+	if (getenv("SSL_NO_TLS1_1") != NULL)
+		ssl_ctx_options |= SSL_OP_NO_TLSv1_1;
+	if (getenv("SSL_NO_TLS1_2") != NULL)
+		ssl_ctx_options |= SSL_OP_NO_TLSv1_2;
+	if (verbose)
+		fetch_info("SSL options: %lx", ssl_ctx_options);
+	SSL_CTX_set_options(ctx, ssl_ctx_options);
+}
+
+
+/*
+ * Configure peer verification based on environment.
+ */
+static int
+fetch_ssl_setup_peer_verification(SSL_CTX *ctx, int verbose)
+{
+	X509_LOOKUP *crl_lookup;
+	X509_STORE *crl_store;
+	const char *ca_cert_file, *ca_cert_path, *crl_file;
+
+	if (getenv("SSL_NO_VERIFY_PEER") == NULL) {
+		ca_cert_file = getenv("SSL_CA_CERT_FILE");
+		ca_cert_path = getenv("SSL_CA_CERT_PATH") != NULL ?
+		    getenv("SSL_CA_CERT_PATH") : X509_get_default_cert_dir();
+		if (verbose) {
+			fetch_info("Peer verification enabled");
+			if (ca_cert_file != NULL)
+				fetch_info("Using CA cert file: %s",
+				    ca_cert_file);
+			if (ca_cert_path != NULL)
+				fetch_info("Using CA cert path: %s",
+				    ca_cert_path);
+		}
+		SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER,
+		    fetch_ssl_cb_verify_crt);
+		SSL_CTX_load_verify_locations(ctx, ca_cert_file,
+		    ca_cert_path);
+		if ((crl_file = getenv("SSL_CRL_FILE")) != NULL) {
+			if (verbose)
+				fetch_info("Using CRL file: %s", crl_file);
+
+			crl_store = SSL_CTX_get_cert_store(ctx);
+			crl_lookup = X509_STORE_add_lookup(crl_store,
+			    X509_LOOKUP_file());
+			if (crl_lookup == NULL ||
+			    !X509_load_crl_file(crl_lookup, crl_file,
+			    X509_FILETYPE_PEM)) {
+				fprintf(stderr,
+				    "Could not load CRL file %s\n",
+				    crl_file);
+				return (0);
+			}
+			X509_STORE_set_flags(crl_store,
+			    X509_V_FLAG_CRL_CHECK |
+			    X509_V_FLAG_CRL_CHECK_ALL);
+		}
+	}
+	return (1);
+}
+
+/*
+ * Configure client certificate based on environment.
+ */
+static int
+fetch_ssl_setup_client_certificate(SSL_CTX *ctx, int verbose)
+{
+	const char *client_cert_file, *client_key_file;
+
+	if ((client_cert_file = getenv("SSL_CLIENT_CERT_FILE")) != NULL) {
+		client_key_file = getenv("SSL_CLIENT_KEY_FILE") != NULL ?
+		    getenv("SSL_CLIENT_KEY_FILE") : client_cert_file;
+		if (verbose) {
+			fetch_info("Using client cert file: %s",
+			    client_cert_file);
+			fetch_info("Using client key file: %s",
+			    client_key_file);
+		}
+		if (SSL_CTX_use_certificate_chain_file(ctx,
+			client_cert_file) != 1) {
+			fprintf(stderr,
+			    "Could not load client certificate %s\n",
+			    client_cert_file);
+			return (0);
+		}
+		if (SSL_CTX_use_PrivateKey_file(ctx, client_key_file,
+			SSL_FILETYPE_PEM) != 1) {
+			fprintf(stderr,
+			    "Could not load client key %s\n",
+			    client_key_file);
+			return (0);
+		}
+	}
+	return (1);
+}
+
+/*
+ * Callback for SSL certificate verification, this is called on server
+ * cert verification. It takes no decision, but informs the user in case
+ * verification failed.
+ */
+int
+fetch_ssl_cb_verify_crt(int verified, X509_STORE_CTX *ctx)
+{
+	X509 *crt;
+	X509_NAME *name;
+	char *str;
+
+	str = NULL;
+	if (!verified) {
+		if ((crt = X509_STORE_CTX_get_current_cert(ctx)) != NULL &&
+		    (name = X509_get_subject_name(crt)) != NULL)
+			str = X509_NAME_oneline(name, 0, 0);
+		fprintf(stderr, "Certificate verification failed for %s\n",
+		    str != NULL ? str : "no relevant certificate");
+		OPENSSL_free(str);
+	}
+	return (verified);
+}
+
+static pthread_once_t ssl_init_once = PTHREAD_ONCE_INIT;
+
+static void
+ssl_init(void)
+{
+	/* Init the SSL library and context */
+	SSL_load_error_strings();
+	SSL_library_init();
 }
 
 /*
@@ -425,68 +1107,84 @@ fetch_cache_put(conn_t *conn, int (*closecb)(conn_t *))
 int
 fetch_ssl(conn_t *conn, const struct url *URL, int verbose)
 {
+	int ret;
+	X509_NAME *name;
+	char *str;
 
-	/* Init the SSL library and context */
-	if (!SSL_library_init()){
-		fprintf(stderr, "SSL library init failed\n");
-		return (-1);
+	(void)pthread_once(&ssl_init_once, ssl_init);
+
+	conn->ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+	if (conn->ssl_ctx == NULL) {
+		fprintf(stderr, "failed to create SSL context\n");
+		ERR_print_errors_fp(stderr);
+		return -1;
 	}
-
-	SSL_load_error_strings();
-
-	conn->ssl_meth = SSLv23_client_method();
-	conn->ssl_ctx = SSL_CTX_new(conn->ssl_meth);
 	SSL_CTX_set_mode(conn->ssl_ctx, SSL_MODE_AUTO_RETRY);
 
+	fetch_ssl_setup_transport_layer(conn->ssl_ctx, verbose);
+	if (!fetch_ssl_setup_peer_verification(conn->ssl_ctx, verbose))
+		return (-1);
+	if (!fetch_ssl_setup_client_certificate(conn->ssl_ctx, verbose))
+		return (-1);
+
 	conn->ssl = SSL_new(conn->ssl_ctx);
-	if (conn->ssl == NULL){
+	if (conn->ssl == NULL) {
 		fprintf(stderr, "SSL context creation failed\n");
 		return (-1);
 	}
-	conn->buf_events = 0;
-	SSL_set_fd(conn->ssl, conn->sd);
+	SSL_set_connect_state(conn->ssl);
+	if (!SSL_set_fd(conn->ssl, conn->sd)) {
+		fprintf(stderr, "SSL_set_fd failed\n");
+		return (-1);
+	}
+#if OPENSSL_VERSION_NUMBER >= 0x0090806fL && !defined(OPENSSL_NO_TLSEXT)
 	if (!SSL_set_tlsext_host_name(conn->ssl, (char *)(uintptr_t)URL->host)) {
 		fprintf(stderr,
 		    "TLS server name indication extension failed for host %s\n",
 		    URL->host);
 		return (-1);
 	}
-
-	if (SSL_connect(conn->ssl) == -1){
-		ERR_print_errors_fp(stderr);
+#endif
+	if ((ret = SSL_connect(conn->ssl)) <= 0){
+		fprintf(stderr, "SSL_connect returned %d\n", SSL_get_error(conn->ssl, ret));
 		return (-1);
 	}
 
-	if (verbose) {
-		X509_NAME *name;
-		char *str;
+	conn->ssl_cert = SSL_get_peer_certificate(conn->ssl);
 
-		fprintf(stderr, "SSL connection established using %s\n",
-		    SSL_get_cipher(conn->ssl));
+	if (conn->ssl_cert == NULL) {
+		fprintf(stderr, "No server SSL certificate\n");
+		return (-1);
+	}
+
+        if (getenv("SSL_NO_VERIFY_HOSTNAME") == NULL) {
+		if (verbose)
+			fetch_info("Verify hostname");
+		if (!fetch_ssl_verify_hname(conn->ssl_cert, URL->host)) {
+			fprintf(stderr,
+				"SSL certificate subject doesn't match host %s\n",
+				URL->host);
+			return (-1);
+		}
+	}
+
+	if (verbose) {
+		fetch_info("%s connection established using %s",
+		    SSL_get_version(conn->ssl), SSL_get_cipher(conn->ssl));
 		conn->ssl_cert = SSL_get_peer_certificate(conn->ssl);
 		name = X509_get_subject_name(conn->ssl_cert);
 		str = X509_NAME_oneline(name, 0, 0);
-		printf("Certificate subject: %s\n", str);
-		free(str);
+		fetch_info("Certificate subject: %s", str);
+		OPENSSL_free(str);
 		name = X509_get_issuer_name(conn->ssl_cert);
 		str = X509_NAME_oneline(name, 0, 0);
-		printf("Certificate issuer: %s\n", str);
-		free(str);
+		fetch_info("Certificate issuer: %s", str);
+		OPENSSL_free(str);
 	}
 
 	return (0);
 }
 
-static int
-compute_timeout(const struct timeval *tv)
-{
-	struct timeval cur;
-	int timeout;
-
-	gettimeofday(&cur, NULL);
-	timeout = (tv->tv_sec - cur.tv_sec) * 1000 + (tv->tv_usec - cur.tv_usec) / 1000;
-	return timeout;
-}
 
 /*
  * Read a character from a connection w/ timeout
@@ -494,12 +1192,13 @@ compute_timeout(const struct timeval *tv)
 ssize_t
 fetch_read(conn_t *conn, char *buf, size_t len)
 {
-	struct timeval timeout_end;
-	struct pollfd pfd;
-	int timeout_cur;
+	struct timeval now, timeout, waittv;
+	fd_set readfds;
 	ssize_t rlen;
 	int r;
 
+	if (!buf)
+		return -1;
 	if (len == 0)
 		return 0;
 
@@ -513,54 +1212,45 @@ fetch_read(conn_t *conn, char *buf, size_t len)
 	}
 
 	if (fetchTimeout) {
-		gettimeofday(&timeout_end, NULL);
-		timeout_end.tv_sec += fetchTimeout;
+		FD_ZERO(&readfds);
+		gettimeofday(&timeout, NULL);
+		timeout.tv_sec += fetchTimeout;
 	}
 
-	pfd.fd = conn->sd;
 	for (;;) {
-		pfd.events = conn->buf_events;
-		if (fetchTimeout && pfd.events) {
-			do {
-				timeout_cur = compute_timeout(&timeout_end);
-				if (timeout_cur < 0) {
-					errno = ETIMEDOUT;
-					fetch_syserr();
-					return (-1);
-				}
-				errno = 0;
-				r = poll(&pfd, 1, timeout_cur);
-				if (r == -1) {
-					if (errno == EINTR && fetchRestartCalls)
-						continue;
-					fetch_syserr();
-					return (-1);
-				}
-			} while (pfd.revents == 0);
+		while (fetchTimeout && !FD_ISSET(conn->sd, &readfds)) {
+			FD_SET(conn->sd, &readfds);
+			gettimeofday(&now, NULL);
+			waittv.tv_sec = timeout.tv_sec - now.tv_sec;
+			waittv.tv_usec = timeout.tv_usec - now.tv_usec;
+			if (waittv.tv_usec < 0) {
+				waittv.tv_usec += 1000000;
+				waittv.tv_sec--;
+			}
+			if (waittv.tv_sec < 0) {
+				errno = ETIMEDOUT;
+				fetch_syserr();
+				return (-1);
+			}
+			errno = 0;
+
+			if (conn->ssl && SSL_pending(conn->ssl))
+				break;
+
+			r = select(conn->sd + 1, &readfds, NULL, NULL, &waittv);
+			if (r == -1) {
+				if (errno == EINTR && fetchRestartCalls)
+					continue;
+				fetch_syserr();
+				return (-1);
+			}
 		}
 
-		if (conn->ssl != NULL) {
+		if (conn->ssl != NULL)
 			rlen = SSL_read(conn->ssl, buf, len);
-			if (rlen == -1) {
-				switch (SSL_get_error(conn->ssl, rlen)) {
-				case SSL_ERROR_WANT_READ:
-					conn->buf_events = POLLIN;
-					break;
-				case SSL_ERROR_WANT_WRITE:
-					conn->buf_events = POLLOUT;
-					break;
-				default:
-					errno = EIO;
-					fetch_syserr();
-					return -1;
-				}
-			} else {
-				/* Assume buffering on the SSL layer. */
-				conn->buf_events = 0;
-			}
-		} else {
+		else
 			rlen = read(conn->sd, buf, len);
-		}
+
 		if (rlen >= 0)
 			break;
 
@@ -647,6 +1337,12 @@ fetch_write(conn_t *conn, const void *buf, size_t len)
 	fd_set writefds;
 	ssize_t wlen, total;
 	int r;
+	static int killed_sigpipe;
+
+	if (!killed_sigpipe) {
+		signal(SIGPIPE, SIG_IGN);
+		killed_sigpipe = 1;
+	}
 
 	if (fetchTimeout) {
 		FD_ZERO(&writefds);
@@ -679,11 +1375,10 @@ fetch_write(conn_t *conn, const void *buf, size_t len)
 			}
 		}
 		errno = 0;
-
 		if (conn->ssl != NULL)
 			wlen = SSL_write(conn->ssl, buf, len);
 		else
-			wlen = send(conn->sd, buf, len, MSG_NOSIGNAL);
+			wlen = send(conn->sd, buf, len, 0);
 
 		if (wlen == 0) {
 			/* we consider a short write a failure */
@@ -716,14 +1411,16 @@ fetch_close(conn_t *conn)
 		SSL_shutdown(conn->ssl);
 		SSL_set_connect_state(conn->ssl);
 		SSL_free(conn->ssl);
+		conn->ssl = NULL;
 	}
 	if (conn->ssl_ctx) {
 		SSL_CTX_free(conn->ssl_ctx);
+		conn->ssl_ctx = NULL;
 	}
 	if (conn->ssl_cert) {
 		X509_free(conn->ssl_cert);
+		conn->ssl_cert = NULL;
 	}
-
 	ret = close(conn->sd);
 	if (conn->cache_url)
 		fetchFreeURL(conn->cache_url);
