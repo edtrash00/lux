@@ -38,6 +38,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <openssl/asn1.h>
 #include <openssl/x509v3.h>
 
 #include <ctype.h>
@@ -59,6 +60,10 @@
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
+#endif
+
+#ifndef ASN1_STRING_get0_data
+#define ASN1_STRING_get0_data(x) ASN1_STRING_data(x)
 #endif
 
 /*** Local data **************************************************************/
