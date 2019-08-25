@@ -13,8 +13,10 @@
 #include "pkg.h"
 #include "zlib.h"
 
-#define BLKSIZE 512
-#define LINK(a) ((a == SYMTYPE) ? symlink : link)
+#define CHOWN(a, b, c, d) \
+((((a) == SYMTYPE) ? s_lchown : s_chown)((b), (c), (d)))
+#define TYPE(x) \
+(((x) == CHRTYPE) ? S_IFCHR : ((x) == BLKTYPE) ? S_IFBLK : S_IFIFO)
 
 enum {
 	AREGTYPE = '\0',
@@ -28,148 +30,150 @@ enum {
 	CONTTYPE = '7'
 };
 
-struct header {
-	char name[100];
-	char mode[8];
-	char uid[8];
-	char gid[8];
-	char size[12];
-	char mtime[12];
-	char chksum[8];
-	char type;
-	char linkname[100];
-	char magic[6];
-	char version[2];
-	char uname[32];
-	char gname[32];
-	char major[8];
-	char minor[8];
-	char prefix[155];
-};
+#define h_name(x)     ((x) +   0)
+#define h_mode(x)     ((x) + 100)
+#define h_uid(x)      ((x) + 108)
+#define h_gid(x)      ((x) + 116)
+#define h_size(x)     ((x) + 124)
+#define h_mtime(x)    ((x) + 136)
+#define h_chksum(x)   ((x) + 148)
+#define h_type(x)     ((x) + 156)
+#define h_linkname(x) ((x) + 157)
+#define h_magic(x)    ((x) + 257)
+#define h_version(x)  ((x) + 263)
+#define h_uname(x)    ((x) + 265)
+#define h_gname(x)    ((x) + 297)
+#define h_major(x)    ((x) + 329)
+#define h_minor(x)    ((x) + 337)
+#define h_prefix(x)   ((x) + 345)
+
+static void
+sanitize(char *h)
+{
+	char *p;
+	if ((p = memchr(h_mode(h),   ' ',  8))) memset(p, 0, h_gid(h)    - p);
+	if ((p = memchr(h_gid(h),    ' ',  8))) memset(p, 0, h_size(h)   - p);
+	if ((p = memchr(h_size(h),   ' ', 12))) memset(p, 0, h_mtime(h)  - p);
+	if ((p = memchr(h_mtime(h),  ' ', 12))) memset(p, 0, h_chksum(h) - p);
+	if ((p = memchr(h_chksum(h), ' ',  8))) memset(p, 0, h_major(h)  - p);
+	if ((p = memchr(h_major(h),  ' ',  8))) memset(p, 0, h_minor(h)  - p);
+	if ((p = memchr(h_minor(h),  ' ',  8))) memset(p, 0, h_prefix(h) - p);
+}
 
 int
 unarchive(int tarfd)
 {
-	struct header *head;
 	struct timespec tms[2];
-	ssize_t rh, r;
-	long gid, major, minor, mode, mtime, size, type, uid;
-	int fd, rval;
-	char blk[BLKSIZE], buf[257], fname[257];
+	ssize_t r;
+	long gid, maj, min, m, mtim, size, typ, uid;
+	int fd;
+	char buf[512], fname[101];
 
-	fd   = -1;
-	head = (struct header *)blk;
-	rval = 0;
+	for (;;) {
+		if (!(r = read(tarfd, buf, sizeof(buf))))
+			break;
+		if (r < 0) {
+			warn("read");
+			return -1;
+		}
+		if (!(*h_name(buf)))
+			break;
 
-	while ((rh = read(tarfd, blk, BLKSIZE)) > 0 && head->name[0]) {
-		fname[0] = '\0';
+		sanitize((char *)buf);
 
-		if (head->prefix[0])
-			strncat(fname, head->prefix, sizeof(head->prefix));
+		fname[0] = 0;
+		if (*h_prefix(buf))
+			strncat(fname, h_prefix(buf), 155);
 
-		strncat(fname, head->name, sizeof(head->name));
+		strncat(fname, h_name(buf), 100);
 
-		mode  = strtomode(head->mode, ACCESSPERMS);
+		m = strtomode(h_mode(buf), ACCESSPERMS);
 
-		strncpy(buf, fname, sizeof(buf)-1);
-		if (mkdirp(dirname(buf), ACCESSPERMS, ACCESSPERMS) < 0)
-			goto failure;
+		if (mkdirp(dircomp(fname), ACCESSPERMS, ACCESSPERMS) < 0)
+			return -1;
 
-		switch (head->type) {
+		switch (*h_type(buf)) {
 		case AREGTYPE:
 		case REGTYPE:
 		case CONTTYPE:
-			size = strtobase(head->size, 0, LONG_MAX, 8);
-			fd = open(fname, O_WRONLY|O_TRUNC|O_CREAT, DEFFILEMODE);
-			if (fd < 0)
-				goto failure;
+			size = strtobase(h_size(buf), 0, LONG_MAX, 8);
+			fd = open(fname, O_WRONLY|O_TRUNC|O_CREAT, (mode_t)m);
+			if (fd < 0) {
+				warn("open %s", fname);
+				return -1;
+			}
 			break;
 		case LNKTYPE:
+			if (link(h_linkname(buf), fname) < 0) {
+				warn("link %s %s", buf, fname);
+				return -1;
+			}
+			break;
 		case SYMTYPE:
-			strncpy(buf, head->linkname, sizeof(head->linkname));
-			if (LINK(head->type)(buf, fname) < 0) {
-				warn("(sym)link %s %s", buf, fname);
-				goto failure;
+			if (symlink(h_linkname(buf), fname) < 0) {
+				warn("symlink %s %s", buf, fname);
+				return -1;
 			}
 			break;
 		case DIRTYPE:
-			if (mkdir(fname, (mode_t)mode) < 0 && errno != EEXIST) {
+			if (mkdir(fname, (mode_t)m) < 0 &&
+			    errno != EEXIST) {
 				warn("mkdir %s", fname);
-				goto failure;
+				return -1;
 			}
 			break;
 		case CHRTYPE:
 		case BLKTYPE:
 		case FIFOTYPE:
-			major = strtobase(head->major, 0, LONG_MAX, 8);
-			minor = strtobase(head->minor, 0, LONG_MAX, 8);
-			type  = (head->type == CHRTYPE) ? S_IFCHR :
-			        (head->type == BLKTYPE) ? S_IFBLK : S_IFIFO;
-			type |= mode;
-			if (mknod(fname, type, makedev(major, minor)) < 0) {
+			maj = strtobase(h_major(buf), 0, LONG_MAX, 8);
+			min = strtobase(h_minor(buf), 0, LONG_MAX, 8);
+			typ = TYPE(*h_type(buf)) | m;
+			if (mknod(fname, typ, makedev(maj, min)) < 0) {
 				warn("mknod %s", fname);
-				goto failure;
+				return -1;
 			}
 			break;
 		default:
-			goto failure;
+			return -1;
 		}
 
-		gid   = strtobase(head->gid, 0, LONG_MAX, 8);
-		uid   = strtobase(head->uid, 0, LONG_MAX, 8);
-		mtime = strtobase(head->mtime, 0, LONG_MAX, 8);
+		gid = strtobase(h_gid(buf), 0, LONG_MAX, 8);
+		uid = strtobase(h_uid(buf), 0, LONG_MAX, 8);
+
+		if (CHOWN(*h_type(buf), fname, gid, uid) < 0) {
+			warn("(l)chown %s", fname);
+			return -1;
+		}
+
+		mtim  = strtobase(h_mtime(buf), 0, LONG_MAX, 8);
 
 		if (fd != -1) {
-			for (; size > 0; size -= sizeof(blk)) {
-				if (read(tarfd, blk, sizeof(blk)) < 0) {
+			for (; size > 0; size -= sizeof(buf)) {
+				if (read(tarfd, buf, sizeof(buf)) < 0) {
 					warn("read %s", fname);
-					goto failure;
+					close(fd);
+					return -1;
 				}
-				r = MIN(size, sizeof(blk));
-				if (write(fd, blk, r) != r) {
+				r = MIN(size, sizeof(buf));
+				if (write(fd, buf, r) != r) {
 					warn("write %s", fname);
-					goto failure;
+					close(fd);
+					return -1;
 				}
 			}
 			close(fd);
-			fd   = -1;
+			fd = -1;
 		}
 
-		tms[0].tv_sec  = tms[1].tv_sec  = mtime;
+		tms[0].tv_sec  = tms[1].tv_sec  = mtim;
 		tms[0].tv_nsec = tms[1].tv_nsec = 0;
 		if (utimensat(AT_FDCWD, fname, tms, AT_SYMLINK_NOFOLLOW) < 0) {
 			warn("utimensat %s", fname);
-			goto failure;
-		}
-		if (head->type == SYMTYPE) {
-			if (!getuid() && lchown(fname, uid, gid)) {
-				warn("lchown %s", fname);
-				goto failure;
-			}
-		} else {
-			if (!getuid() && chown(fname, uid, gid) < 0) {
-				warn("chown %s", fname);
-				goto failure;
-			}
-			if (chmod(fname, mode) < 0) {
-				warn("chmod %s", fname);
-				goto failure;
-			}
+			return -1;
 		}
 	}
 
-	if (rh < 0) {
-		warn("read");
-		goto failure;
-	}
-
-	goto done;
-failure:
-	rval = -1;
-done:
-	if (fd != -1)
-		close(fd);
-	return rval;
+	return 0;
 }
 
 int

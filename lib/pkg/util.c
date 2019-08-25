@@ -161,3 +161,25 @@ strtomode(const char *str, mode_t mode)
 
 	return  ((octal | mode) & ~umask(0));
 }
+
+char *
+dircomp(char *path)
+{
+	static char s[PATH_MAX];
+	strncpy(s, path, sizeof(s));
+	return dirname(s);
+}
+
+int
+s_chown(const char *s, uid_t o, gid_t g)
+{
+	if (getuid()) return 0;
+	return chown(s, o, g);
+}
+
+int
+s_lchown(const char *s, uid_t o, gid_t g)
+{
+	if (getuid()) return 0;
+	return lchown(s, o, g);
+}
