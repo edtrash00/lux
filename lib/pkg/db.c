@@ -24,14 +24,12 @@ enum {
 	SIZE        = 57345, /* size        */
 	RUNDEP      = 30157, /* run-dep     */
 	MAKEDEP     = 22448, /* make-dep    */
-	DIRECTORY   = 33933, /* dir         */
 	AFILE       = 62844, /* file        */
 };
 
 static void
 db_clean(Package *pkg)
 {
-	clean(pkg->dirs);
 	clean(pkg->files);
 	clean(pkg->mdeps);
 	clean(pkg->rdeps);
@@ -41,7 +39,6 @@ void
 db_init(Package *pkg)
 {
 	memset(pkg, 0, sizeof(*pkg));
-	membuf_strinit(&pkg->dirs,  NULL, PKG_VARSIZE);
 	membuf_strinit(&pkg->files, NULL, PKG_VARSIZE);
 	membuf_strinit(&pkg->mdeps, NULL, PKG_VARSIZE);
 	membuf_strinit(&pkg->rdeps, NULL, PKG_VARSIZE);
@@ -100,9 +97,6 @@ db_open(Package *pkg, char *file)
 		case MAKEDEP:
 			init2(pkg->mdeps, p);
 			break;
-		case DIRECTORY:
-			init2(pkg->dirs, p);
-			break;
 		case AFILE:
 			init2(pkg->files, p);
 			break;
@@ -124,7 +118,6 @@ done:
 void
 db_free(Package *pkg)
 {
-	free(pkg->dirs.p);
 	free(pkg->files.p);
 	free(pkg->mdeps.p);
 	free(pkg->rdeps.p);

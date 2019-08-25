@@ -84,10 +84,7 @@ remove(const char *path) {
 		return -1;
 	}
 
-	if (S_ISDIR(st.st_mode))
-		fn = rmdir;
-	else
-		fn = unlink;
+	fn = S_ISDIR(st.st_mode) ? rmdir : unlink;
 
 	if (fn(path) < 0) {
 		warn("remove %s", path);

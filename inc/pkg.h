@@ -19,7 +19,6 @@ struct Membuf {
 typedef struct Package Package;
 
 struct Package {
-	Membuf dirs;
 	Membuf files;
 	Membuf mdeps;
 	Membuf rdeps;

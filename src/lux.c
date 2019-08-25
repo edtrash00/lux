@@ -48,18 +48,17 @@ static char buffer[POOLSIZE];
 static Membuf stackpool = { sizeof(buffer), 0, buffer };
 
 static void
-pnode(Membuf mp, int isfile, int putch)
+pnode(Membuf mp, int isfile)
 {
-	char  *p;
+	char *p;
 
 	p = mp.p;
 
-	for (; *p;) {
-		if (putch++)
-			putchar(' ');
-		if (isfile)
-			fputs(PKG_DIR, stdout);
+	for (;;) {
+		if (isfile) fputs(PKG_DIR, stdout);
 		p += printf("%s", p) + 1;
+		if (!(*p)) break;
+		putchar(' ');
 	}
 
 	freepool();
@@ -70,24 +69,19 @@ static int
 add(Package *pkg)
 {
 	Membuf p1, p2;
-	int i, rval;
+	int rval;
 	char *p;
 
-	i    = 0;
 	rval = 0;
 
 	membuf_strinit(&p1, ptrpool(), sizepool(2)); advpool(p1.a);
 	membuf_strinit(&p2, ptrpool(), sizepool(2)); advpool(p2.a);
 	membuf_vstrcat(&p1, PKG_TMP, pkg->name, "#", pkg->version, "/");
 	membuf_strcat(&p2, PKG_DIR);
-	for (; i < 2; i++) {
-		p = (i == 0) ? (pkg->dirs).p : (pkg->files).p;
-		for (; *p; p += strlen(p)+1) {
-			p1.n -= membuf_strcat(&p1, p);
-			p2.n -= membuf_strcat(&p2, p);
-			if (move(p1.p, p2.p) < 0)
-				rval = 1;
-		}
+	for (p = pkg->files.p; *p; p += strlen(p)+1) {
+		p1.n -= membuf_strcat(&p1, p);
+		p2.n -= membuf_strcat(&p2, p);
+		if (move(p1.p, p2.p) < 0) rval = 1;
 	}
 
 	freepool();
@@ -99,21 +93,16 @@ static int
 del(Package *pkg)
 {
 	Membuf mp;
-	int i, rval;
+	int rval;
 	char *p;
 
-	i    = 0;
 	rval = 0;
 
 	membuf_strinit(&mp, ptrpool(), sizepool(1)); advpool(mp.a);
 	membuf_strcat(&mp, PKG_DIR);
-	for (; i < 2; i++) {
-		p = (i == 0) ? (pkg->files).p : (pkg->dirs).p;
-		for (; *p; p += strlen(p)+1) {
-			mp.n -= membuf_strcat(&mp, p);
-			if (remove(mp.p) < 0)
-				rval = 1;
-		}
+	for (p = pkg->files.p; *p; p += strlen(p)+1) {
+		mp.n -= membuf_strcat(&mp, p);
+		if (remove(mp.p) < 0) rval = 1;
 	}
 
 	freepool();
@@ -278,8 +267,7 @@ show_desc(Package *pkg)
 static int
 show_files(Package *pkg)
 {
-	pnode(pkg->dirs,  1, 0);
-	pnode(pkg->files, 1, 1);
+	pnode(pkg->files, 1);
 	return 0;
 }
 
@@ -295,7 +283,7 @@ show_lic(Package *pkg)
 static int
 show_mdeps(Package *pkg)
 {
-	pnode(pkg->mdeps, 0, 0);
+	pnode(pkg->mdeps, 0);
 	return 0;
 }
 
@@ -311,7 +299,7 @@ show_name(Package *pkg)
 static int
 show_rdeps(Package *pkg)
 {
-	pnode(pkg->rdeps, 0, 0);
+	pnode(pkg->rdeps, 0);
 	return 0;
 }
 
