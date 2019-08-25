@@ -29,7 +29,6 @@ enum Hash {
 	REG     = 11939, /* register          */
 	SDESC   = 56620, /* show-description  */
 	SFILES  = 47015, /* show-files        */
-	SFLAGS  = 60343, /* show-flags        */
 	SLIC    = 62833, /* show-license      */
 	SMDEPS  = 64865, /* show-mdeps        */
 	SNAME   = 5979,  /* show-name         */
@@ -285,13 +284,6 @@ show_files(Package *pkg)
 }
 
 static int
-show_flags(Package *pkg)
-{
-	pnode(pkg->flags, 0, 0);
-	return 0;
-}
-
-static int
 show_lic(Package *pkg)
 {
 	if (*pkg->license)
@@ -463,10 +455,6 @@ main(int argc, char *argv[])
 		fn   = show_files;
 		type = LOCAL;
 		break;
-	case SFLAGS:
-		fn   = show_flags;
-		type = LOCAL;
-		break;
 	case SLIC:
 		fn   = show_lic;
 		type = LOCAL;
@@ -492,8 +480,7 @@ main(int argc, char *argv[])
 		type = LOCAL;
 		break;
 	case UPDATE:
-		rval = update();
-		exit(rval);
+		exit(update());
 	default:
 		usage();
 	}

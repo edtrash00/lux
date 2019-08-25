@@ -21,7 +21,6 @@ typedef struct Package Package;
 struct Package {
 	Membuf dirs;
 	Membuf files;
-	Membuf flags;
 	Membuf mdeps;
 	Membuf rdeps;
 	off_t size;

@@ -26,7 +26,6 @@ enum {
 	MAKEDEP     = 22448, /* make-dep    */
 	DIRECTORY   = 33933, /* dir         */
 	AFILE       = 62844, /* file        */
-	FLAG        = 65388  /* flag        */
 };
 
 static void
@@ -34,7 +33,6 @@ db_clean(Package *pkg)
 {
 	clean(pkg->dirs);
 	clean(pkg->files);
-	clean(pkg->flags);
 	clean(pkg->mdeps);
 	clean(pkg->rdeps);
 }
@@ -45,7 +43,6 @@ db_init(Package *pkg)
 	memset(pkg, 0, sizeof(*pkg));
 	membuf_strinit(&pkg->dirs,  NULL, PKG_VARSIZE);
 	membuf_strinit(&pkg->files, NULL, PKG_VARSIZE);
-	membuf_strinit(&pkg->flags, NULL, PKG_VARSIZE);
 	membuf_strinit(&pkg->mdeps, NULL, PKG_VARSIZE);
 	membuf_strinit(&pkg->rdeps, NULL, PKG_VARSIZE);
 }
@@ -109,9 +106,6 @@ db_open(Package *pkg, char *file)
 		case AFILE:
 			init2(pkg->files, p);
 			break;
-		case FLAG:
-			init2(pkg->flags, p);
-			break;
 		default:
 			continue;
 		}
@@ -132,7 +126,6 @@ db_free(Package *pkg)
 {
 	free(pkg->dirs.p);
 	free(pkg->files.p);
-	free(pkg->flags.p);
 	free(pkg->mdeps.p);
 	free(pkg->rdeps.p);
 }
