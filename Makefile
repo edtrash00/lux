@@ -25,14 +25,13 @@ MAN5=\
 	man/pkg_dbfile.5
 
 # LIB SOURCE
-LIBFETCHSRC=\
+LIBPKGSRC=\
 	lib/fetch/common.c\
 	lib/fetch/fetch.c\
 	lib/fetch/file.c\
 	lib/fetch/ftp.c\
-	lib/fetch/http.c
-
-LIBPKGSRC=\
+	lib/fetch/http.c\
+	lib/pkg/alloc.c\
 	lib/pkg/ar.c\
 	lib/pkg/db.c\
 	lib/pkg/fs.c\
@@ -41,16 +40,14 @@ LIBPKGSRC=\
 	lib/pkg/util.c
 
 # LIB PATH
-LIBPKG=   lib/libpkg.a
-LIBFETCH= lib/libfetch.a
+LIBPKG= lib/libpkg.a
 
 # LIB OBJS
-LIBPKGOBJ=   $(LIBPKGSRC:.c=.o)
-LIBFETCHOBJ= $(LIBFETCHSRC:.c=.o)
+LIBPKGOBJ= $(LIBPKGSRC:.c=.o)
 
 # ALL
-LIB= $(LIBPKG)  $(LIBFETCH)
-OBJ= $(BIN:=.o) $(LIBPKGOBJ) $(LIBFETCHOBJ)
+LIB= $(LIBPKG)
+OBJ= $(BIN:=.o) $(LIBPKGOBJ)
 SRC= $(BIN:=.c)
 
 # VAR RULES

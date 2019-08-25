@@ -16,11 +16,6 @@
 ((x) == LOCAL ? PKG_LDB : (x) == REMOTE ? PKG_RDB : (x) == NONE ? "" : NULL)
 #define MODERWCT   (O_RDWR|O_CREAT|O_TRUNC)
 
-#define freepool()  stackpool.n = 0;
-#define ptrpool()   stackpool.p + stackpool.n
-#define advpool(x)  stackpool.n += (x)
-#define sizepool(x) ((stackpool.a - stackpool.n) / (x))
-
 enum Hash {
 	ADD     = 30881, /* add               */
 	DEL     = 33803, /* del               */
@@ -44,24 +39,17 @@ enum RTypes {
 	NONE   = 3
 };
 
-static char buffer[POOLSIZE];
-static Membuf stackpool = { sizeof(buffer), 0, buffer };
-
 static void
 pnode(Membuf mp, int isfile)
 {
 	char *p;
-
 	p = mp.p;
-
 	for (;;) {
 		if (isfile) fputs(PKG_DIR, stdout);
 		p += printf("%s", p) + 1;
 		if (!(*p)) break;
 		putchar(' ');
 	}
-
-	freepool();
 }
 
 /* action functions */
@@ -74,8 +62,8 @@ add(Package *pkg)
 
 	rval = 0;
 
-	membuf_strinit(&p1, ptrpool(), sizepool(2)); advpool(p1.a);
-	membuf_strinit(&p2, ptrpool(), sizepool(2)); advpool(p2.a);
+	membuf_strinit(&p1, NULL, 512);
+	membuf_strinit(&p2, NULL, 512);
 	membuf_vstrcat(&p1, PKG_TMP, pkg->name, "#", pkg->version, "/");
 	membuf_strcat(&p2, PKG_DIR);
 	for (p = pkg->files.p; *p; p += strlen(p)+1) {
@@ -84,7 +72,8 @@ add(Package *pkg)
 		if (move(p1.p, p2.p) < 0) rval = 1;
 	}
 
-	freepool();
+	membuf_free(&p1);
+	membuf_free(&p2);
 
 	return rval;
 }
@@ -98,14 +87,14 @@ del(Package *pkg)
 
 	rval = 0;
 
-	membuf_strinit(&mp, ptrpool(), sizepool(1)); advpool(mp.a);
+	membuf_strinit(&mp, NULL, 512);
 	membuf_strcat(&mp, PKG_DIR);
 	for (p = pkg->files.p; *p; p += strlen(p)+1) {
 		mp.n -= membuf_strcat(&mp, p);
 		if (remove(mp.p) < 0) rval = 1;
 	}
 
-	freepool();
+	membuf_free(&mp);
 
 	return rval;
 }
@@ -119,7 +108,7 @@ explode(Package *pkg)
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	membuf_strinit(&p1, ptrpool(), sizepool(2)); advpool(p1.a);
+	membuf_strinit(&p1, NULL, 512);
 	membuf_vstrcat(&p1, PKG_TMP, pkg->name, "#", pkg->version);
 
 	if (mkdir(p1.p, ACCESSPERMS) < 0) {
@@ -133,7 +122,7 @@ explode(Package *pkg)
 		goto failure;
 	}
 
-	membuf_strinit(&p2, ptrpool(), sizepool(2)); advpool(p2.a);
+	membuf_strinit(&p2, NULL, 512);
 	membuf_vstrcat(&p2, p1.p, ".ustar");
 	membuf_strcat(&p1, PKG_FMT);
 
@@ -162,7 +151,8 @@ done:
 		close(fd[0]);
 	if (fd[1] != -1)
 		close(fd[1]);
-	freepool();
+	membuf_free(&p1);
+	membuf_free(&p2);
 	return rval;
 }
 
@@ -181,7 +171,7 @@ fetch(Package *pkg)
 	i     = 0;
 	rval  = 0;
 
-	membuf_strinit(&tmp, ptrpool(), sizepool(1)); advpool(tmp.a);
+	membuf_strinit(&tmp, NULL, 512);
 	for (; i < 2; i++) {
 		tmp.n = 0;
 		membuf_vstrcat(&tmp, PKG_TMP, pkg->name, "#", pkg->version,
@@ -195,6 +185,7 @@ fetch(Package *pkg)
 		    i ? PKG_FMT : PKG_SIG);
 		if (netfd(tmp.p, fd[i], NULL) < 0)
 			goto failure;
+		sfreeall();
 	}
 
 	lseek(fd[0], 0, SEEK_SET);
@@ -209,7 +200,7 @@ fetch(Package *pkg)
 		*p++ = '\0';
 
 	if (!p || !(*p)) {
-		warnx("fetch %s: checksum file in wrong format", pkg->name);
+		warnx("fetch %s: checksum file in wrong format", pkg->name.p);
 		goto failure;
 	}
 
@@ -218,12 +209,12 @@ fetch(Package *pkg)
 	size = strtobase(p,   0, SSIZE_MAX, 10);
 
 	if (fsize != size) {
-		warnx("fetch %s: size mismatch", pkg->name);
+		warnx("fetch %s: size mismatch", pkg->name.p);
 		goto failure;
 	}
 
 	if (lsum != rsum) {
-		warnx("fetch %s: checksum mismatch", pkg->name);
+		warnx("fetch %s: checksum mismatch", pkg->name.p);
 		goto failure;
 	}
 
@@ -235,7 +226,7 @@ done:
 		close(fd[0]);
 	if (fd[1] != -1)
 		close(fd[1]);
-	freepool();
+	membuf_free(&tmp);
 	return rval;
 }
 
@@ -244,13 +235,13 @@ regpkg(Package *pkg)
 {
 	Membuf p;
 
-	membuf_strinit(&p, ptrpool(), sizepool(1)); advpool(p.a);
+	membuf_strinit(&p, NULL, 512);
 	membuf_vstrcat(&p, GETDB(LOCAL), pkg->name);
 
-	if (copy(pkg->path, p.p) < 0)
+	if (copy(pkg->path.p, p.p) < 0)
 		return 1;
 
-	freepool();
+	membuf_free(&p);
 
 	return 0;
 }
@@ -258,9 +249,7 @@ regpkg(Package *pkg)
 static int
 show_desc(Package *pkg)
 {
-	if (*pkg->description)
-		puts(pkg->description);
-
+	if (*pkg->description.p) puts(pkg->description.p);
 	return 0;
 }
 
@@ -274,9 +263,7 @@ show_files(Package *pkg)
 static int
 show_lic(Package *pkg)
 {
-	if (*pkg->license)
-		puts(pkg->license);
-
+	if (*pkg->license.p) puts(pkg->license.p);
 	return 0;
 }
 
@@ -290,9 +277,7 @@ show_mdeps(Package *pkg)
 static int
 show_name(Package *pkg)
 {
-	if (*pkg->name)
-		puts(pkg->name);
-
+	if (*pkg->name.p) puts(pkg->name.p);
 	return 0;
 }
 
@@ -306,19 +291,14 @@ show_rdeps(Package *pkg)
 static int
 show_ver(Package *pkg)
 {
-	if (*pkg->version)
-		puts(pkg->version);
-
+	if (*pkg->version.p) puts(pkg->version.p);
 	return 0;
 }
 
 static int
 unregpkg(Package *pkg)
 {
-	if (remove(pkg->path) < 0)
-		return 1;
-
-	return 0;
+	return remove(pkg->path.p) < 0;
 }
 
 static int
@@ -330,7 +310,7 @@ update(void)
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	membuf_strinit(&p, ptrpool(), sizepool(1)); advpool(p.a);
+	membuf_strinit(&p, NULL, 512);
 	p.n -= membuf_vstrcat(&p, PKG_TMP, PKG_FDB);
 
 	if ((fd[0] = open(p.p, MODERWCT, DEFFILEMODE)) < 0) {
@@ -342,6 +322,7 @@ update(void)
 
 	if (netfd(p.p, fd[0], NULL) < 0)
 		goto failure;
+	sfreeall();
 
 	p.n -= membuf_vstrcat(&p, PKG_TMP, PKG_FDB, ".ustar");
 
@@ -372,7 +353,7 @@ done:
 		close(fd[0]);
 	if (fd[1] != -1)
 		close(fd[1]);
-	freepool();
+	membuf_free(&p);
 	return rval;
 }
 
@@ -477,22 +458,17 @@ main(int argc, char *argv[])
 
 	db_init(&pkg);
 
-	membuf_strinit(&p, ptrpool(), sizepool(1));
+	membuf_strinit(&p, NULL, 512);
 	membuf_vstrcat(&p, GETDB((atype == 0) ? type : atype), "/");
 	for (; *argv; argc--, argv++) {
 		p.n -= membuf_strcat(&p, *argv);
 		if (!(db_open(&pkg, p.p))) {
-			if (errno == ENOMEM)
-				exit(1);
+			if (errno == ENOMEM) exit(1);
 			rval = 1;
 			continue;
 		}
-		advpool(p.n+1);
 		rval |= fn(&pkg);
-		freepool()
 	}
-
-	db_free(&pkg);
 
 	return rval;
 }

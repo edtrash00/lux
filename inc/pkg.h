@@ -19,16 +19,26 @@ struct Membuf {
 typedef struct Package Package;
 
 struct Package {
+	Membuf description;
 	Membuf files;
+	Membuf license;
 	Membuf mdeps;
+	Membuf name;
+	Membuf path;
 	Membuf rdeps;
+	Membuf version;
 	off_t size;
-	char name[PKG_NAMEMAX];
-	char version[PKG_VERMAX];
-	char license[PKG_LICMAX];
-	char description[PKG_DESCMAX];
-	char path[PKG_PATHMAX];
 };
+
+/* alloc.c */
+void * alloc(size_t);
+void   alloc_free(void *, size_t);
+void * alloc_re(void *, size_t, size_t);
+void * salloc(size_t);
+void * scalloc(size_t, size_t);
+void   sfree(void *);
+void * srealloc(void *, size_t);
+void   sfreeall(void);
 
 /* ar.c */
 int uncomp(int, int);
@@ -52,9 +62,9 @@ int mkdirp(char *, mode_t, mode_t);
 int netfd(char *, int, const char *);
 
 /* str.c */
+void    membuf_free(Membuf *);
 #define membuf_vstrcat(a, b, ...) membuf_vstrcat_((a), (b), __VA_ARGS__, NULL)
 void    membuf_strinit(Membuf *, char *, size_t);
-ssize_t membuf_dstrcat(Membuf *, char *);
 ssize_t membuf_strcat(Membuf *, char *);
 ssize_t membuf_vstrcat_(Membuf *, char *, ...);
 
@@ -63,3 +73,6 @@ unsigned filetosum(int, ssize_t *);
 unsigned strtohash(char *);
 long long strtobase(const char *, long long, long long, int);
 mode_t strtomode(const char *, mode_t);
+char * dircomp(char *);
+int s_chown(const char *, uid_t, gid_t);
+int s_lchown(const char *, uid_t, gid_t);

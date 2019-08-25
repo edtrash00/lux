@@ -89,6 +89,7 @@
 #include "fetch.h"
 #include "common.h"
 #include "httperr.h"
+#include "pkg.h"
 
 /* Maximum number of redirects to follow */
 #define MAX_REDIRECT 5
@@ -179,7 +180,7 @@ http_growbuf(struct httpio *io, size_t len)
 	if (io->bufsize >= len)
 		return (0);
 
-	if ((tmp = realloc(io->buf, len)) == NULL)
+	if ((tmp = srealloc(io->buf, len)) == NULL)
 		return (-1);
 	io->buf = tmp;
 	io->bufsize = len;
@@ -322,8 +323,8 @@ http_closefn(void *v)
 		fetch_close(io->conn);
 	}
 
-	free(io->buf);
-	free(io);
+	sfree(io->buf);
+	sfree(io);
 }
 
 /*
@@ -335,7 +336,7 @@ http_funopen(conn_t *conn, int chunked, int keep_alive, off_t clength)
 	struct httpio *io;
 	fetchIO *f;
 
-	if ((io = calloc(1, sizeof(*io))) == NULL) {
+	if ((io = scalloc(1, sizeof(*io))) == NULL) {
 		fetch_syserr();
 		return (NULL);
 	}
@@ -346,7 +347,7 @@ http_funopen(conn_t *conn, int chunked, int keep_alive, off_t clength)
 	f = fetchIO_unopen(io, http_readfn, http_writefn, http_closefn);
 	if (f == NULL) {
 		fetch_syserr();
-		free(io);
+		sfree(io);
 		return (NULL);
 	}
 	return (f);
@@ -410,7 +411,7 @@ http_cmd(conn_t *conn, const char *fmt, ...)
 	}
 
 	r = fetch_write(conn, msg, len);
-	free(msg);
+	sfree(msg);
 
 	if (r == -1) {
 		fetch_syserr();
@@ -601,7 +602,7 @@ http_base64(const char *src)
 	int t, r;
 
 	l = strlen(src);
-	if ((str = malloc(((l + 2) / 3) * 4 + 1)) == NULL)
+	if ((str = salloc(((l + 2) / 3) * 4 + 1)) == NULL)
 		return (NULL);
 	dst = str;
 	r = 0;
@@ -654,11 +655,11 @@ http_basic_auth(conn_t *conn, const char *hdr, const char *usr, const char *pwd)
 	if (asprintf(&upw, "%s:%s", usr, pwd) == -1)
 		return (-1);
 	auth = http_base64(upw);
-	free(upw);
+	sfree(upw);
 	if (auth == NULL)
 		return (-1);
 	r = http_cmd(conn, "%s: Basic %s\r\n", hdr, auth);
-	free(auth);
+	sfree(auth);
 	return (r);
 }
 
@@ -684,7 +685,7 @@ http_authorize(conn_t *conn, const char *hdr, const char *p)
 		pwd = strchr(str, ':');
 		*pwd++ = '\0';
 		r = http_basic_auth(conn, hdr, user, pwd);
-		free(str);
+		sfree(str);
 		return (r);
 	}
 	return (-1);
@@ -1078,7 +1079,7 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 				if (!HTTP_REDIRECT(conn->err))
 					break;
 				if (new)
-					free(new);
+					sfree(new);
 				if (verbose)
 					fetch_info("%d redirect to %s", conn->err, p);
 				if (*p == '/')
@@ -1500,7 +1501,7 @@ fetchListHTTP(struct url_list *ue, struct url *url, const char *pattern, const c
 			return fetchAppendURLList(ue, &cache->ue);
 		}
 
-		cache = malloc(sizeof(*cache));
+		cache = salloc(sizeof(*cache));
 		if (cache == NULL)
 			return -1;
 		fetchInitURLList(&cache->ue);
@@ -1512,7 +1513,7 @@ fetchListHTTP(struct url_list *ue, struct url *url, const char *pattern, const c
 		if (do_cache) {
 			fetchFreeURLList(&cache->ue);
 			fetchFreeURL(cache->location);
-			free(cache);
+			sfree(cache);
 		}
 		return -1;
 	}

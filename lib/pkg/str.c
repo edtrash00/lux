@@ -10,10 +10,10 @@ membuf_strinit(Membuf *p, char *s, size_t n)
 {
 	p->a = n;
 	p->n = 0;
-	p->p = s;
+	p->p = alloc(n);
 }
 
-ssize_t
+static ssize_t
 membuf_strcats(Membuf *p, char *s, size_t n)
 {
 	if (p->n + n >= p->a)
@@ -29,7 +29,16 @@ membuf_strcats(Membuf *p, char *s, size_t n)
 ssize_t
 membuf_strcat(Membuf *p, char *s)
 {
-	return (membuf_strcats(p, s, strlen(s)));
+	ssize_t n;
+
+	n = strlen(s);
+
+	if (p->n + n >= p->a) {
+		while (p->n + n >= p->a) p->a <<= 1;
+		p->p = alloc_re(p->p, p->n, p->a);
+	}
+
+	return membuf_strcats(p, s, n);
 }
 
 ssize_t
@@ -56,19 +65,8 @@ membuf_vstrcat_(Membuf *p, char *s0, ...)
 	return t;
 }
 
-ssize_t
-membuf_dstrcat(Membuf *p, char *s)
+void
+membuf_free(Membuf *p)
 {
-	ssize_t n;
-	n = strlen(s);
-	if (!(p->p)) {
-		if (!(p->p = malloc(p->a)))
-			return -1;
-	}
-	for (; p->n + n >= p->a;) {
-		p->a *= 2;
-		if (!(p->p = realloc(p->p, p->a)))
-			return -1;
-	}
-	return membuf_strcats(p, s, n);
+	alloc_free(p->p, p->a);
 }

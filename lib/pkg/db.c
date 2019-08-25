@@ -8,13 +8,11 @@
 
 #define clean(x) if ((x).p) { memset((x).p, 0, (x).n); (x).n = 0; }
 
-#define init1(a, b, c) \
-membuf_strinit(&(a), (b), sizeof((b)));\
-membuf_strcat(&(a), (c))
+#define init1(a, b) \
+{ (a).n = 0; membuf_strcat(&(a), (b)); }
 
-#define init2(a, b)\
-membuf_dstrcat(&(a), (b));\
-(a).n++
+#define init2(a, b) \
+{ membuf_strcat(&(a), (b)); (a).n++; }
 
 enum {
 	NAME        = 31371, /* name        */
@@ -39,16 +37,22 @@ void
 db_init(Package *pkg)
 {
 	memset(pkg, 0, sizeof(*pkg));
-	membuf_strinit(&pkg->files, NULL, PKG_VARSIZE);
-	membuf_strinit(&pkg->mdeps, NULL, PKG_VARSIZE);
-	membuf_strinit(&pkg->rdeps, NULL, PKG_VARSIZE);
+
+	membuf_strinit(&pkg->name, NULL, PKG_NAMEMAX);
+	membuf_strinit(&pkg->version, NULL, PKG_VERMAX);
+	membuf_strinit(&pkg->license, NULL, PKG_LICMAX);
+	membuf_strinit(&pkg->description, NULL, PKG_DESCMAX);
+	membuf_strinit(&pkg->path, NULL, PKG_PATHMAX);
+
+	membuf_strinit(&pkg->files, NULL, (POOLSIZE / 2) / 2);
+	membuf_strinit(&pkg->mdeps, NULL, (POOLSIZE / 2) / 4);
+	membuf_strinit(&pkg->rdeps, NULL, (POOLSIZE / 2) / 4);
 }
 
 Package *
 db_open(Package *pkg, char *file)
 {
 	FILE *fp;
-	Membuf mp;
 	ssize_t len;
 	char buf[LINE_MAX];
 	char *p;
@@ -59,8 +63,7 @@ db_open(Package *pkg, char *file)
 	}
 
 	db_clean(pkg);
-	membuf_strinit(&mp, pkg->path, sizeof(pkg->path));
-	membuf_strcat(&mp, file);
+	init1(pkg->path, file);
 
 	while ((len = fgetline(buf, sizeof(buf), fp)) != EOF) {
 		buf[len-1] = '\0'; /* remove trailing newline */
@@ -77,16 +80,16 @@ db_open(Package *pkg, char *file)
 
 		switch (strtohash(buf)) {
 		case NAME:
-			init1(mp, pkg->name, p);
+			init1(pkg->name, p);
 			break;
 		case VERSION:
-			init1(mp, pkg->version, p);
+			init1(pkg->version, p);
 			break;
 		case LICENSE:
-			init1(mp, pkg->license, p);
+			init1(pkg->license, p);
 			break;
 		case DESCRIPTION:
-			init1(mp, pkg->description, p);
+			init1(pkg->description, p);
 			break;
 		case SIZE:
 			pkg->size = strtobase(p, 0, UINT_MAX, 10);
@@ -118,7 +121,5 @@ done:
 void
 db_free(Package *pkg)
 {
-	free(pkg->files.p);
-	free(pkg->mdeps.p);
-	free(pkg->rdeps.p);
+	(void)pkg;
 }

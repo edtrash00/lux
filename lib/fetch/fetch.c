@@ -38,6 +38,7 @@
 
 #include "fetch.h"
 #include "common.h"
+#include "pkg.h"
 
 auth_t	 fetchAuthMethod;
 int	 fetchLastErrCode;
@@ -267,14 +268,14 @@ fetchMakeURL(const char *scheme, const char *host, int port, const char *doc,
 	}
 
 	/* allocate struct url */
-	if ((u = calloc(1, sizeof(*u))) == NULL) {
+	if ((u = scalloc(1, sizeof(*u))) == NULL) {
 		fetch_syserr();
 		return (NULL);
 	}
 
 	if ((u->doc = strdup(doc ? doc : "/")) == NULL) {
 		fetch_syserr();
-		free(u);
+		sfree(u);
 		return (NULL);
 	}
 
@@ -376,13 +377,13 @@ fetchCopyURL(const struct url *src)
 	char *doc;
 
 	/* allocate struct url */
-	if ((dst = malloc(sizeof(*dst))) == NULL) {
+	if ((dst = salloc(sizeof(*dst))) == NULL) {
 		fetch_syserr();
 		return (NULL);
 	}
 	if ((doc = strdup(src->doc)) == NULL) {
 		fetch_syserr();
-		free(dst);
+		sfree(dst);
 		return (NULL);
 	}
 	*dst = *src;
@@ -405,7 +406,7 @@ fetchParseURL(const char *URL)
 	int pre_quoted;
 
 	/* allocate struct url */
-	if ((u = calloc(1, sizeof(*u))) == NULL) {
+	if ((u = scalloc(1, sizeof(*u))) == NULL) {
 		fetch_syserr();
 		return (NULL);
 	}
@@ -527,7 +528,7 @@ quote_doc:
 			++count;
 	}
 
-	if ((u->doc = malloc(count)) == NULL) {
+	if ((u->doc = salloc(count)) == NULL) {
 		fetch_syserr();
 		goto ouch;
 	}
@@ -551,7 +552,7 @@ quote_doc:
 	return (u);
 
 ouch:
-	free(u);
+	sfree(u);
 	return (NULL);
 }
 
@@ -561,8 +562,8 @@ ouch:
 void
 fetchFreeURL(struct url *u)
 {
-	free(u->doc);
-	free(u);
+	sfree(u->doc);
+	sfree(u);
 }
 
 static char
@@ -588,7 +589,7 @@ fetchUnquotePath(struct url *url)
 	const char *iter;
 	size_t i;
 
-	if ((unquoted = malloc(strlen(url->doc) + 1)) == NULL)
+	if ((unquoted = salloc(strlen(url->doc) + 1)) == NULL)
 		return NULL;
 
 	for (i = 0, iter = url->doc; *iter != '\0'; ++iter) {
@@ -624,7 +625,7 @@ fetchUnquoteFilename(struct url *url)
 	if ((last_slash = strrchr(unquoted, '/')) == NULL)
 		return unquoted;
 	filename = strdup(last_slash + 1);
-	free(unquoted);
+	sfree(unquoted);
 	return filename;
 }
 
@@ -637,7 +638,7 @@ fetchStringifyURL(const struct url *url)
 	/* scheme :// user : pwd @ host :port doc */
 	total = strlen(url->scheme) + 3 + strlen(url->user) + 1 +
 	    strlen(url->pwd) + 1 + strlen(url->host) + 6 + strlen(url->doc) + 1;
-	if ((doc = malloc(total)) == NULL)
+	if ((doc = salloc(total)) == NULL)
 		return NULL;
 	if (url->port != 0)
 		snprintf(doc, total, "%s%s%s%s%s%s%s:%d%s",

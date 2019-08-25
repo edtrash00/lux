@@ -83,6 +83,7 @@
 #include "fetch.h"
 #include "common.h"
 #include "ftperr.h"
+#include "pkg.h"
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
@@ -211,7 +212,7 @@ ftp_cmd(conn_t *conn, const char *fmt, ...)
 	}
 
 	r = fetch_write(conn, msg, len);
-	free(msg);
+	sfree(msg);
 
 	if (r == -1) {
 		fetch_syserr();
@@ -260,7 +261,7 @@ ftp_pwd(conn_t *conn, char **pwd)
 	src = conn->buf + 4;
 	if (src >= end || *src++ != '"')
 		return (FTP_PROTOCOL_ERROR);
-	*pwd = malloc(end - src + 1);
+	*pwd = salloc(end - src + 1);
 	if (*pwd == NULL)
 		return (FTP_PROTOCOL_ERROR);
 	for (q = 0, dst = *pwd; src < end; ++src) {
@@ -275,7 +276,7 @@ ftp_pwd(conn_t *conn, char **pwd)
 	}
 	*dst = '\0';
 	if (**pwd != '/') {
-		free(*pwd);
+		sfree(*pwd);
 		*pwd = NULL;
 		return (FTP_PROTOCOL_ERROR);
 	}
@@ -311,7 +312,7 @@ ftp_cwd(conn_t *conn, const char *path, int subdir)
 	}
 	if (conn->ftp_home == NULL && (conn->ftp_home = strdup(pwd)) == NULL) {
 		fetch_syserr();
-		free(pwd);
+		sfree(pwd);
 		return (-1);
 	}
 	if (*path == '/') {
@@ -326,7 +327,7 @@ ftp_cwd(conn_t *conn, const char *path, int subdir)
 	}
 	if (dst == NULL) {
 		fetch_syserr();
-		free(pwd);
+		sfree(pwd);
 		return (-1);
 	}
 
@@ -347,16 +348,16 @@ ftp_cwd(conn_t *conn, const char *path, int subdir)
 			break;
 		if (pwd[i] == '\0' && (dst[i - 1] == '/' || dst[i] == '/'))
 			break;
-		free(pwd);
+		sfree(pwd);
 		if ((e = ftp_cmd(conn, "CDUP\r\n")) != FTP_FILE_ACTION_OK ||
 		    (e = ftp_cmd(conn, "PWD\r\n")) != FTP_WORKING_DIRECTORY ||
 		    (e = ftp_pwd(conn, &pwd)) != FTP_OK) {
 			ftp_seterr(e);
-			free(dst);
+			sfree(dst);
 			return (-1);
 		}
 	}
-	free(pwd);
+	sfree(pwd);
 
 #ifdef FTP_COMBINE_CWDS
 	/* Skip leading slashes, even "////". */
@@ -365,14 +366,14 @@ ftp_cwd(conn_t *conn, const char *path, int subdir)
 
 	/* If there is no trailing dir, we're already there. */
 	if (beg >= end) {
-		free(dst);
+		sfree(dst);
 		return (0);
 	}
 
 	/* Change to the directory all in one chunk (e.g., foo/bar/baz). */
 	e = ftp_cmd(conn, "CWD %.*s\r\n", (int)(end - beg), beg);
 	if (e == FTP_FILE_ACTION_OK) {
-		free(dst);
+		sfree(dst);
 		return (0);
 	}
 #endif /* FTP_COMBINE_CWDS */
@@ -385,12 +386,12 @@ ftp_cwd(conn_t *conn, const char *path, int subdir)
 			/* nothing */ ;
 		e = ftp_cmd(conn, "CWD %.*s\r\n", (int)(dst + i - beg), beg);
 		if (e != FTP_FILE_ACTION_OK) {
-			free(dst);
+			sfree(dst);
 			ftp_seterr(e);
 			return (-1);
 		}
 	}
-	free(dst);
+	sfree(dst);
 	return (0);
 }
 
@@ -629,7 +630,7 @@ ftp_closefn(void *v)
 	io->dir = -1;
 	ftp_chkerr(io->cconn);
 	fetch_cache_put(io->cconn, ftp_disconnect);
-	free(io);
+	sfree(io);
 	return;
 }
 
@@ -641,7 +642,7 @@ ftp_setup(conn_t *cconn, conn_t *dconn, int mode)
 
 	if (cconn == NULL || dconn == NULL)
 		return (NULL);
-	if ((io = malloc(sizeof(*io))) == NULL)
+	if ((io = salloc(sizeof(*io))) == NULL)
 		return (NULL);
 	io->cconn = cconn;
 	io->dconn = dconn;
@@ -649,7 +650,7 @@ ftp_setup(conn_t *cconn, conn_t *dconn, int mode)
 	io->eof = io->err = 0;
 	f = fetchIO_unopen(io, ftp_readfn, ftp_writefn, ftp_closefn);
 	if (f == NULL)
-		free(io);
+		sfree(io);
 	return (f);
 }
 
@@ -1156,7 +1157,7 @@ ftp_request(struct url *url, const char *op, const char *op_arg,
 	/* change directory */
 	if (ftp_cwd(conn, path, op_arg != NULL) == -1) {
 		fetch_close(conn);
-		free(path);
+		sfree(path);
 		return (NULL);
 	}
 
@@ -1169,14 +1170,14 @@ ftp_request(struct url *url, const char *op, const char *op_arg,
 	    && fetchLastErrCode != FETCH_PROTO
 	    && fetchLastErrCode != FETCH_UNAVAIL) {
 		fetch_close(conn);
-		free(path);
+		sfree(path);
 		return (NULL);
 	}
 
 	if (if_modified_since && url->last_modified > 0 &&
 	    url->last_modified >= us->mtime) {
 		fetch_cache_put(conn, ftp_disconnect);
-		free(path);
+		sfree(path);
 		fetchLastErrCode = FETCH_UNCHANGED;
 		snprintf(fetchLastErrString, MAXERRSTRING, "Unchanged");
 		return NULL;
@@ -1185,7 +1186,7 @@ ftp_request(struct url *url, const char *op, const char *op_arg,
 	/* just a stat */
 	if (strcmp(op, "STAT") == 0) {
 		fetch_cache_put(conn, ftp_disconnect);
-		free(path);
+		sfree(path);
 		return fetchIO_unopen(NULL, NULL, NULL, NULL);
 	}
 	if (strcmp(op, "STOR") == 0 || strcmp(op, "APPE") == 0)
@@ -1195,7 +1196,7 @@ ftp_request(struct url *url, const char *op, const char *op_arg,
 
 	/* initiate the transfer */
 	f = (ftp_transfer(conn, op, path, op_arg, oflag, url->offset, flags));
-	free(path);
+	sfree(path);
 	return f;
 }
 

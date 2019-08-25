@@ -65,6 +65,7 @@
 
 #include "fetch.h"
 #include "common.h"
+#include "pkg.h"
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
@@ -238,7 +239,7 @@ fetch_reopen(int sd)
 	conn_t *conn;
 
 	/* allocate and fill connection structure */
-	if ((conn = calloc(1, sizeof(*conn))) == NULL)
+	if ((conn = scalloc(1, sizeof(*conn))) == NULL)
 		return (NULL);
 	conn->ftp_home = NULL;
 	conn->cache_url = NULL;
@@ -499,7 +500,7 @@ fetch_connect(struct url *url, int af, int verbose)
 			if (fetch_socks5(conn, url, socks_url, verbose) != 0) {
 				fetch_syserr();
 				close(sd);
-				free(conn);
+				sfree(conn);
 				return NULL;
 			}
 		}
@@ -812,7 +813,7 @@ fetch_ssl_get_numeric_addrinfo(const char *hostname, size_t len)
 	struct addrinfo hints, *res;
 	char *host;
 
-	host = (char *)malloc(len + 1);
+	host = (char *)salloc(len + 1);
 	memcpy(host, hostname, len);
 	host[len] = '\0';
 	memset(&hints, 0, sizeof(hints));
@@ -822,10 +823,10 @@ fetch_ssl_get_numeric_addrinfo(const char *hostname, size_t len)
 	hints.ai_flags = AI_NUMERICHOST;
 	/* port is not relevant for this purpose */
 	if (getaddrinfo(host, "443", &hints, &res) != 0) {
-		free(host);
+		sfree(host);
 		return NULL;
 	}
-	free(host);
+	sfree(host);
 	return res;
 }
 
@@ -1305,7 +1306,7 @@ fetch_getln(conn_t *conn)
 	ssize_t len;
 
 	if (conn->buf == NULL) {
-		if ((conn->buf = malloc(MIN_BUF_SIZE)) == NULL) {
+		if ((conn->buf = salloc(MIN_BUF_SIZE)) == NULL) {
 			errno = ENOMEM;
 			return (-1);
 		}
@@ -1336,7 +1337,7 @@ fetch_getln(conn_t *conn)
 				errno = ENOMEM;
 				return (-1);
 			}
-			if ((tmp = realloc(tmp, tmpsize)) == NULL) {
+			if ((tmp = srealloc(tmp, tmpsize)) == NULL) {
 				errno = ENOMEM;
 				return (-1);
 			}
@@ -1467,9 +1468,9 @@ fetch_close(conn_t *conn)
 	ret = close(conn->sd);
 	if (conn->cache_url)
 		fetchFreeURL(conn->cache_url);
-	free(conn->ftp_home);
-	free(conn->buf);
-	free(conn);
+	sfree(conn->ftp_home);
+	sfree(conn->buf);
+	sfree(conn);
 	return (ret);
 }
 
@@ -1504,7 +1505,7 @@ fetch_add_entry(struct url_list *ue, struct url *base, const char *name,
 			++name_len;
 	}
 
-	tmp_name = malloc( base_doc_len + name_len + 1);
+	tmp_name = salloc( base_doc_len + name_len + 1);
 	if (tmp_name == NULL) {
 		errno = ENOMEM;
 		fetch_syserr();
@@ -1512,9 +1513,9 @@ fetch_add_entry(struct url_list *ue, struct url *base, const char *name,
 	}
 
 	if (ue->length + 1 >= ue->alloc_size) {
-		tmp = realloc(ue->urls, (ue->alloc_size * 2 + 1) * sizeof(*tmp));
+		tmp = srealloc(ue->urls, (ue->alloc_size * 2 + 1) * sizeof(*tmp));
 		if (tmp == NULL) {
-			free(tmp_name);
+			sfree(tmp_name);
 			errno = ENOMEM;
 			fetch_syserr();
 			return (-1);
@@ -1578,7 +1579,7 @@ fetchAppendURLList(struct url_list *dst, const struct url_list *src)
 	if (len > dst->alloc_size) {
 		struct url *tmp;
 
-		tmp = realloc(dst->urls, len * sizeof(*tmp));
+		tmp = srealloc(dst->urls, len * sizeof(*tmp));
 		if (tmp == NULL) {
 			errno = ENOMEM;
 			fetch_syserr();
@@ -1593,7 +1594,7 @@ fetchAppendURLList(struct url_list *dst, const struct url_list *src)
 		dst->urls[j].doc = strdup(src->urls[i].doc);
 		if (dst->urls[j].doc == NULL) {
 			while (i-- > 0)
-				free(dst->urls[j].doc);
+				sfree(dst->urls[j].doc);
 			fetch_syserr();
 			return -1;
 		}
@@ -1609,8 +1610,8 @@ fetchFreeURLList(struct url_list *ue)
 	size_t i;
 
 	for (i = 0; i < ue->length; ++i)
-		free(ue->urls[i].doc);
-	free(ue->urls);
+		sfree(ue->urls[i].doc);
+	sfree(ue->urls);
 	ue->length = ue->alloc_size = 0;
 }
 
@@ -1762,7 +1763,7 @@ fetchIO_close(fetchIO *f)
 	if (f->io_close != NULL)
 		(*f->io_close)(f->io_cookie);
 
-	free(f);
+	sfree(f);
 }
 
 fetchIO *
@@ -1772,7 +1773,7 @@ fetchIO_unopen(void *io_cookie, ssize_t (*io_read)(void *, void *, size_t),
 {
 	fetchIO *f;
 
-	f = malloc(sizeof(*f));
+	f = salloc(sizeof(*f));
 	if (f == NULL)
 		return f;
 

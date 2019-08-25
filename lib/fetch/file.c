@@ -42,6 +42,7 @@
 
 #include "fetch.h"
 #include "common.h"
+#include "pkg.h"
 
 static int	fetch_stat_file(int, struct url_stat *);
 
@@ -62,7 +63,7 @@ fetchFile_close(void *cookie)
 {
 	int fd = *(int *)cookie;
 
-	free(cookie);
+	sfree(cookie);
 
 	close(fd);
 }
@@ -85,7 +86,7 @@ fetchXGetFile(struct url *u, struct url_stat *us, const char *flags)
 	}
 
 	fd = open(path, O_RDONLY);
-	free(path);
+	sfree(path);
 	if (fd == -1) {
 		fetch_syserr();
 		return NULL;
@@ -111,7 +112,7 @@ fetchXGetFile(struct url *u, struct url_stat *us, const char *flags)
 		return NULL;
 	}
 
-	cookie = malloc(sizeof(int));
+	cookie = salloc(sizeof(int));
 	if (cookie == NULL) {
 		close(fd);
 		fetch_syserr();
@@ -122,7 +123,7 @@ fetchXGetFile(struct url *u, struct url_stat *us, const char *flags)
 	f = fetchIO_unopen(cookie, fetchFile_read, fetchFile_write, fetchFile_close);
 	if (f == NULL) {
 		close(fd);
-		free(cookie);
+		sfree(cookie);
 	}
 	return f;
 }
@@ -150,7 +151,7 @@ fetchPutFile(struct url *u, const char *flags)
 	else
 		fd = open(path, O_WRONLY);
 
-	free(path);
+	sfree(path);
 
 	if (fd == -1) {
 		fetch_syserr();
@@ -163,7 +164,7 @@ fetchPutFile(struct url *u, const char *flags)
 		return NULL;
 	}
 
-	cookie = malloc(sizeof(int));
+	cookie = salloc(sizeof(int));
 	if (cookie == NULL) {
 		close(fd);
 		fetch_syserr();
@@ -174,7 +175,7 @@ fetchPutFile(struct url *u, const char *flags)
 	f = fetchIO_unopen(cookie, fetchFile_read, fetchFile_write, fetchFile_close);
 	if (f == NULL) {
 		close(fd);
-		free(cookie);
+		sfree(cookie);
 	}
 	return f;
 }
@@ -215,7 +216,7 @@ fetchStatFile(struct url *u, struct url_stat *us, const char *flags)
 	}
 
 	fd = open(path, O_RDONLY);
-	free(path);
+	sfree(path);
 
 	if (fd == -1) {
 		fetch_syserr();
@@ -244,7 +245,7 @@ fetchListFile(struct url_list *ue, struct url *u, const char *pattern, const cha
 	}
 
 	dir = opendir(path);
-	free(path);
+	sfree(path);
 
 	if (dir == NULL) {
 		fetch_syserr();
