@@ -279,7 +279,7 @@ populate_chksum(void)
 	membuf_strinit(&p, NULL, 512);
 	p.n -= membuf_strcat(&p, PKG_CHK);
 
-	if ((fd = open(p.p, O_RDONLY)) < 0) {
+	if ((fd = open(p.p, MODERWCT, DEFFILEMODE)) < 0) {
 		warn("open %s", p.p);
 		return -1;
 	}
