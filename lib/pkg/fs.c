@@ -56,21 +56,31 @@ done:
 int
 move(const char *src, const char *dest)
 {
-	char *d;
+	struct stat st;
 	size_t n;
+	char *d;
 
-	n = strlen(dest);
-	d = alloc(n);
-	memcpy(d, dest, n);
-
-	if (mkdirp(d, ACCESSPERMS, ACCESSPERMS) < 0)
+	if (lstat(src, &st) < 0) {
+		warn("lstat %s", src);
 		return -1;
+	}
 
-	alloc_free(d, n);
-
-	if (rename(src, dest) < 0) {
-		warn("rename %s %s", src, dest);
-		return -1;
+	if (S_ISDIR(st.st_mode)) {
+		n = strlen(dest);
+		d = alloc(n);
+		memcpy(d, dest, n);
+		if (mkdirp(dest, st.st_mode, ACCESSPERMS) < 0) {
+			alloc_free(d, n);
+			return -1;
+		}
+		alloc_free(d, n);
+	} else {
+		if (mkdirp(dircomp(dest), ACCESSPERMS, ACCESSPERMS) < 0)
+			return -1;
+		if (rename(src, dest) < 0) {
+			warn("rename %s %s", src, dest);
+			return -1;
+		}
 	}
 
 	return 0;
