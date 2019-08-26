@@ -11,6 +11,7 @@
 #include "pkg.h"
 #include "zlib.h"
 
+#define BLKSIZE 512
 #define CHOWN(a, b, c, d) \
 ((((a) == SYMTYPE) ? s_lchown : s_chown)((b), (c), (d)))
 #define TYPE(x) \
@@ -28,94 +29,96 @@ enum {
 	CONTTYPE = '7'
 };
 
-#define h_name(x)     ((x) +   0)
-#define h_mode(x)     ((x) + 100)
-#define h_uid(x)      ((x) + 108)
-#define h_gid(x)      ((x) + 116)
-#define h_size(x)     ((x) + 124)
-#define h_mtime(x)    ((x) + 136)
-#define h_chksum(x)   ((x) + 148)
-#define h_type(x)     ((x) + 156)
-#define h_linkname(x) ((x) + 157)
-#define h_magic(x)    ((x) + 257)
-#define h_version(x)  ((x) + 263)
-#define h_uname(x)    ((x) + 265)
-#define h_gname(x)    ((x) + 297)
-#define h_major(x)    ((x) + 329)
-#define h_minor(x)    ((x) + 337)
-#define h_prefix(x)   ((x) + 345)
+struct header {
+	char name[100];
+	char mode[8];
+	char uid[8];
+	char gid[8];
+	char size[12];
+	char mtime[12];
+	char chksum[8];
+	char type;
+	char linkname[100];
+	char magic[6];
+	char version[2];
+	char uname[32];
+	char gname[32];
+	char major[8];
+	char minor[8];
+	char prefix[155];
+};
 
 static void
-sanitize(char *h)
+sanitize(struct header *h)
 {
-	char *p;
-	if ((p = memchr(h_mode(h),   ' ',  8))) memset(p, 0, h_gid(h)    - p);
-	if ((p = memchr(h_gid(h),    ' ',  8))) memset(p, 0, h_size(h)   - p);
-	if ((p = memchr(h_size(h),   ' ', 12))) memset(p, 0, h_mtime(h)  - p);
-	if ((p = memchr(h_mtime(h),  ' ', 12))) memset(p, 0, h_chksum(h) - p);
-	if ((p = memchr(h_chksum(h), ' ',  8))) memset(p, 0, h_major(h)  - p);
-	if ((p = memchr(h_major(h),  ' ',  8))) memset(p, 0, h_minor(h)  - p);
-	if ((p = memchr(h_minor(h),  ' ',  8))) memset(p, 0, h_prefix(h) - p);
+	#define MEMSAN(a) \
+	{\
+		char *p;\
+		if ((p = memchr((a), ' ', sizeof((a)))))\
+			memset(p, 0, sizeof((a)) - (p - (a)));\
+	}
+	MEMSAN(h->mode);
+	MEMSAN(h->gid);
+	MEMSAN(h->size);
+	MEMSAN(h->mtime);
+	MEMSAN(h->chksum);
+	MEMSAN(h->major);
+	MEMSAN(h->minor);
 }
 
 int
 unarchive(int tarfd)
 {
+	struct header *head;
 	struct timespec tms[2];
 	ssize_t r;
-	long gid, maj, min, m, mtim, size, typ, uid;
-	int fd;
-	char buf[512], fname[101];
+	long gid, major, minor, mode, mtime, size, type, uid;
+	int n, fd;
+	char blk[BLKSIZE], fname[256];
 
-	for (;;) {
-		if (!(r = read(tarfd, buf, sizeof(buf))))
-			break;
-		if (r < 0) {
-			warn("read");
-			return -1;
-		}
-		if (!(*h_name(buf)))
-			break;
+	fd   = -1;
+	head = (struct header *)blk;
 
-		sanitize((char *)buf);
+	while ((r = read(tarfd, blk, BLKSIZE)) > 0 && head->name[0]) {
+		sanitize(head);
 
-		fname[0] = 0;
-		if (*h_prefix(buf))
-			strncat(fname, h_prefix(buf), 155);
+		n = 0;
+		if (head->prefix[0])
+			n = snprintf(fname, sizeof(fname), "%.*s/",
+			             (int)sizeof(head->prefix), head->prefix);
+		snprintf(fname + n, sizeof(fname) - n, "%.*s",
+		         (int)sizeof(head->name), head->name);
 
-		strncat(fname, h_name(buf), 100);
-
-		m = strtomode(h_mode(buf), ACCESSPERMS);
+		mode = strtomode(head->mode, ACCESSPERMS);
 
 		if (mkdirp(dircomp(fname), ACCESSPERMS, ACCESSPERMS) < 0)
 			return -1;
 
-		switch (*h_type(buf)) {
+		switch (head->type) {
 		case AREGTYPE:
 		case REGTYPE:
 		case CONTTYPE:
-			size = strtobase(h_size(buf), 0, LONG_MAX, 8);
-			fd = open(fname, O_WRONLY|O_TRUNC|O_CREAT, (mode_t)m);
+			size = strtobase(head->size, 0, LONG_MAX, 8);
+			fd = open(fname, O_WRONLY|O_TRUNC|O_CREAT, (mode_t)mode);
 			if (fd < 0) {
 				warn("open %s", fname);
 				return -1;
 			}
 			break;
 		case LNKTYPE:
-			if (link(h_linkname(buf), fname) < 0) {
-				warn("link %s %s", buf, fname);
+			if (link(head->linkname, fname) < 0) {
+				warn("link %s %s", head->linkname, fname);
 				return -1;
 			}
 			break;
 		case SYMTYPE:
-			if (symlink(h_linkname(buf), fname) < 0) {
-				warn("symlink %s %s", buf, fname);
+			if (symlink(head->linkname, fname) < 0) {
+				warn("symlink %s %s", head->linkname, fname);
 				return -1;
 			}
 			break;
 		case DIRTYPE:
-			if (mkdir(fname, (mode_t)m) < 0 &&
-			    errno != EEXIST) {
+			if (mkdir(fname, (mode_t)mode) < 0 && errno != EEXIST) {
 				warn("mkdir %s", fname);
 				return -1;
 			}
@@ -123,37 +126,32 @@ unarchive(int tarfd)
 		case CHRTYPE:
 		case BLKTYPE:
 		case FIFOTYPE:
-			maj = strtobase(h_major(buf), 0, LONG_MAX, 8);
-			min = strtobase(h_minor(buf), 0, LONG_MAX, 8);
-			typ = TYPE(*h_type(buf)) | m;
-			if (mknod(fname, typ, makedev(maj, min)) < 0) {
+			major = strtobase(head->major, 0, LONG_MAX, 8);
+			minor = strtobase(head->minor, 0, LONG_MAX, 8);
+			type = TYPE(head->type) | mode;
+			if (mknod(fname, type, makedev(major, minor)) < 0) {
 				warn("mknod %s", fname);
 				return -1;
 			}
 			break;
 		default:
+			errno = EINVAL;
 			return -1;
 		}
 
-		gid = strtobase(h_gid(buf), 0, LONG_MAX, 8);
-		uid = strtobase(h_uid(buf), 0, LONG_MAX, 8);
-
-		if (CHOWN(*h_type(buf), fname, gid, uid) < 0) {
-			warn("(l)chown %s", fname);
-			return -1;
-		}
-
-		mtim  = strtobase(h_mtime(buf), 0, LONG_MAX, 8);
+		gid   = strtobase(head->gid, 0, LONG_MAX, 8);
+		uid   = strtobase(head->uid, 0, LONG_MAX, 8);
+		mtime = strtobase(head->mtime, 0, LONG_MAX, 8);
 
 		if (fd != -1) {
-			for (; size > 0; size -= sizeof(buf)) {
-				if (read(tarfd, buf, sizeof(buf)) < 0) {
+			for (; size > 0; size -= sizeof(blk)) {
+				if (read(tarfd, blk, sizeof(blk)) < 0) {
 					warn("read %s", fname);
 					close(fd);
 					return -1;
 				}
-				r = MIN(size, sizeof(buf));
-				if (write(fd, buf, r) != r) {
+				r = MIN(size, sizeof(blk));
+				if (write(fd, blk, r) != r) {
 					warn("write %s", fname);
 					close(fd);
 					return -1;
@@ -163,12 +161,21 @@ unarchive(int tarfd)
 			fd = -1;
 		}
 
-		tms[0].tv_sec  = tms[1].tv_sec  = mtim;
+		tms[0].tv_sec  = tms[1].tv_sec  = mtime;
 		tms[0].tv_nsec = tms[1].tv_nsec = 0;
 		if (utimensat(AT_FDCWD, fname, tms, AT_SYMLINK_NOFOLLOW) < 0) {
 			warn("utimensat %s", fname);
 			return -1;
 		}
+		if (CHOWN(head->type, fname, gid, uid) < 0) {
+			warn("(l)chown %s", fname);
+			return -1;
+		}
+	}
+
+	if (r < 0) {
+		warn("read");
+		return -1;
 	}
 
 	return 0;
