@@ -110,6 +110,8 @@ explode(Package *pkg)
 	rval  = 0;
 
 	membuf_strinit(&p1, NULL, 512);
+	membuf_strinit(&p2, NULL, 512);
+
 	membuf_vstrcat(&p1, PKG_TMP, pkg->name.p, "#", pkg->version.p);
 
 	if (mkdir(p1.p, ACCESSPERMS) < 0) {
@@ -123,7 +125,6 @@ explode(Package *pkg)
 		goto failure;
 	}
 
-	membuf_strinit(&p2, NULL, 512);
 	membuf_vstrcat(&p2, p1.p, ".ustar");
 	membuf_strcat(&p1, PKG_FMT);
 
@@ -204,7 +205,7 @@ regpkg(Package *pkg)
 	Membuf p;
 
 	membuf_strinit(&p, NULL, 512);
-	membuf_vstrcat(&p, GETDB(LOCAL), pkg->name);
+	membuf_vstrcat(&p, GETDB(LOCAL), pkg->name.p);
 
 	if (copy(pkg->path.p, p.p) < 0)
 		return 1;
