@@ -1,4 +1,4 @@
-.Dd August 24, 2019
+.Dd August 25, 2019
 .Dt LUX 1
 .Os
 .Sh NAME
@@ -37,6 +37,10 @@ Inflate and extract a remote package from cache.
 Fetch remote package to the cache.
 .It Cm register
 Register a remote package to the local database.
+.It Cm populate-chksum
+Populate the checksum file.
+.It Cm populate-remote
+Populate remote database.
 .It Cm show-description
 Write description from local package to the standard output.
 .It Cm show-files
@@ -56,8 +60,6 @@ to the standard output.
 Write version from local package to the standard output.
 .It Cm unregister
 Unregister a package from local database.
-.It Cm update
-Populate remote database.
 .El
 .Sh EXIT STATUS
 .Ex -std

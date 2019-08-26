@@ -69,7 +69,8 @@ ssize_t membuf_strcat(Membuf *, char *);
 ssize_t membuf_vstrcat_(Membuf *, char *, ...);
 
 /* util.c */
-unsigned filetosum(int, ssize_t *);
+int chksum(Package *, size_t, unsigned);
+unsigned filetosum(int, size_t *);
 unsigned strtohash(char *);
 long long strtobase(const char *, long long, long long, int);
 mode_t strtomode(const char *, mode_t);

@@ -88,7 +88,7 @@ fgetline(char *buf, size_t bsize, FILE *stream)
 
 /* crc32 */
 unsigned
-filetosum(int fd, ssize_t *sz)
+filetosum(int fd, size_t *sz)
 {
 	size_t fsize, i;
 	ssize_t rf;
@@ -109,6 +109,65 @@ filetosum(int fd, ssize_t *sz)
 		sum = (sum << 8) ^ crctab[(sum >> 24) ^ (i & 0xFF)];
 
 	return (~sum);
+}
+
+int
+chksum(Package *pkg, size_t len, unsigned sum)
+{
+	FILE *fp;
+	Membuf mp;
+	ssize_t r;
+	size_t siz;
+	unsigned sval;
+	char buf[LINE_MAX];
+	char *p;
+
+	membuf_strinit(&mp, NULL, 512);
+	mp.n -= membuf_strcat(&mp, PKG_CHK);
+	if (!(fp = fopen(mp.p, "r"))) {
+		warn("fopen %s", mp.p);
+		membuf_free(&mp);
+		return -1;
+	}
+	membuf_vstrcat(&mp, pkg->name.p, "#", pkg->version.p);
+
+	siz = 0;
+	sval = 0;
+	while ((r = fgetline(buf, sizeof(buf), fp)) != EOF) {
+		buf[r-1] = '\0';
+
+		if (*buf == '\0' || *buf == '#')
+			continue;
+
+		if ((p = strchr(buf, ' ')))
+			*p++ = '\0';
+		if (!p)
+			continue;
+
+		if (strcmp(mp.p, buf))
+			continue;
+
+		r = p - buf;
+		if ((p = strchr(p, ' ')))
+			*p++ = '\0';
+		if (!p)
+			continue;
+
+		siz  = strtobase(buf + r, 0, SIZE_MAX, 10);
+		sval = strtobase(p, 0, UINT_MAX, 10);
+		break;
+	}
+	membuf_free(&mp);
+	fclose(fp);
+	if (!(siz && sval)) {
+		warnx("cksum %s: entry not found", pkg->name.p);
+		return -1;
+	}
+	if ((sum != siz) || (sum != sval)) {
+		warnx("cksum %s: checksum mismatch", pkg->name.p);
+		return -1;
+	}
+	return 0;
 }
 
 /* sdbm (modified) */

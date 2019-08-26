@@ -14,7 +14,7 @@
 
 #define GETDB(x) \
 ((x) == LOCAL ? PKG_LDB : (x) == REMOTE ? PKG_RDB : (x) == NONE ? "" : NULL)
-#define MODERWCT   (O_RDWR|O_CREAT|O_TRUNC)
+#define MODERWCT (O_RDWR|O_CREAT|O_TRUNC)
 
 enum Hash {
 	ADD     = 30881, /* add               */
@@ -22,6 +22,8 @@ enum Hash {
 	EXPLODE = 63713, /* explode           */
 	FETCH   = 1722,  /* fetch             */
 	REG     = 11939, /* register          */
+	POPCHK  = 47656, /* populate-chksum   */
+	POPREM  = 65161, /* populate-remote   */
 	SDESC   = 56620, /* show-description  */
 	SFILES  = 47015, /* show-files        */
 	SLIC    = 62833, /* show-license      */
@@ -30,7 +32,6 @@ enum Hash {
 	SRDEPS  = 29414, /* show-rdeps        */
 	SVER    = 36360, /* show-version      */
 	UNREG   = 37948, /* unregister        */
-	UPDATE  = 14537  /* update            */
 };
 
 enum RTypes {
@@ -159,74 +160,41 @@ done:
 static int
 fetch(Package *pkg)
 {
-	Membuf tmp;
-	ssize_t rf, fsize, size;
-	int fd[2], i, rval;
-	unsigned lsum, rsum;
-	char buf[LINE_MAX];
-	char *p;
+	Membuf mp;
+	size_t siz;
+	int fd, rval;
+	unsigned sum;
 
-	fd[0] = fd[1] = -1;
-	fsize = 0;
-	i     = 0;
+	fd = -1;
 	rval  = 0;
 
-	membuf_strinit(&tmp, NULL, 512);
-	for (; i < 2; i++) {
-		tmp.n = 0;
-		membuf_vstrcat(&tmp, PKG_TMP, pkg->name, "#", pkg->version,
-		    i ? PKG_FMT : PKG_SIG);
-		if ((fd[i] = open(tmp.p, MODERWCT, DEFFILEMODE)) < 0) {
-			warn("open %s", tmp.p);
-			goto failure;
-		}
-		tmp.n = 0;
-		membuf_vstrcat(&tmp, PKG_SRC, pkg->name, "#", pkg->version,
-		    i ? PKG_FMT : PKG_SIG);
-		if (netfd(tmp.p, fd[i], NULL) < 0)
-			goto failure;
-		sfreeall();
-	}
-
-	lseek(fd[0], 0, SEEK_SET);
-	lseek(fd[1], 0, SEEK_SET);
-
-	while ((rf = read(fd[0], buf, sizeof(buf))) > 0)
-		fsize += rf;
-
-	buf[fsize-1] = '\0';
-
-	if ((p = strchr(buf, ' ')))
-		*p++ = '\0';
-
-	if (!p || !(*p)) {
-		warnx("fetch %s: checksum file in wrong format", pkg->name.p);
+	membuf_strinit(&mp, NULL, 512);
+	membuf_vstrcat(&mp, PKG_TMP, pkg->name.p, "#", pkg->version.p, PKG_FMT);
+	if ((fd = open(mp.p, MODERWCT, DEFFILEMODE)) < 0) {
+		warn("open %s", mp.p);
 		goto failure;
 	}
 
-	lsum = filetosum(fd[1], &fsize);
-	rsum = strtobase(buf, 0, UINT_MAX,  10);
-	size = strtobase(p,   0, SSIZE_MAX, 10);
-
-	if (fsize != size) {
-		warnx("fetch %s: size mismatch", pkg->name.p);
+	mp.n = 0;
+	membuf_vstrcat(&mp, PKG_SRC, pkg->name.p, "#", pkg->version.p, PKG_FMT);
+	if (netfd(mp.p, fd, NULL) < 0)
 		goto failure;
-	}
 
-	if (lsum != rsum) {
-		warnx("fetch %s: checksum mismatch", pkg->name.p);
-		goto failure;
-	}
+	lseek(fd, 0, SEEK_SET);
+
+	siz = 0;
+	sum = filetosum(fd, &siz);
+
+	if (chksum(pkg, siz, sum) < 0)
+		rval = 1;
 
 	goto done;
 failure:
 	rval = 1;
 done:
-	if (fd[0] != -1)
-		close(fd[0]);
-	if (fd[1] != -1)
-		close(fd[1]);
-	membuf_free(&tmp);
+	if (fd != -1)
+		close(fd);
+	membuf_free(&mp);
 	return rval;
 }
 
@@ -302,7 +270,31 @@ unregpkg(Package *pkg)
 }
 
 static int
-update(void)
+populate_chksum(void)
+{
+	Membuf p;
+	int fd;
+
+	membuf_strinit(&p, NULL, 512);
+	p.n -= membuf_strcat(&p, PKG_CHK);
+
+	if ((fd = open(p.p, O_RDONLY)) < 0) {
+		warn("open %s", p.p);
+		return -1;
+	}
+
+	membuf_vstrcat(&p, PKG_SDB, PKG_FSG);
+	if (netfd(p.p, fd, NULL) < 0) {
+		close(fd);
+		return -1;
+	}
+
+	close(fd);
+	return 0;
+}
+
+static int
+populate_remote(void)
 {
 	Membuf p;
 	int fd[2], rval;
@@ -416,6 +408,10 @@ main(int argc, char *argv[])
 		fn   = regpkg;
 		type = REMOTE;
 		break;
+	case POPCHK:
+		exit(populate_chksum());
+	case POPREM:
+		exit(populate_remote());
 	case SDESC:
 		fn   = show_desc;
 		type = LOCAL;
@@ -448,8 +444,6 @@ main(int argc, char *argv[])
 		fn   = unregpkg;
 		type = LOCAL;
 		break;
-	case UPDATE:
-		exit(update());
 	default:
 		usage();
 	}
