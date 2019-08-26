@@ -8,8 +8,10 @@
 
 #define ISSTACK(x) \
 ((char *)(x) >= (char *)stackpool && (char *)(x) <= (char *)stackpool + POOLSIZE)
-#define ISMINE(x) \
+#define ISPOOL(x) \
 ((char *)(x) >= mp.p && (char *)(x) <= mp.p + mp.a)
+#define ISMINE(x) \
+(ISSTACK(x) || ISPOOL(x))
 #define ISSALLOC(x) \
 ((x) == (void *)-1)
 
@@ -17,19 +19,23 @@ typedef union { char x[16]; double d; } aligned;
 static aligned stackpool[POOLSIZE/16];
 static Membuf mp = { POOLSIZE, 0, (char *)stackpool };
 static size_t freesiz;
+static int warned;
 
-static void
+static int
 ready(void)
 {
 	if (!ISSTACK(mp.p)) {
-		mp.a <<= 1;
-		if (!(mp.p = realloc(mp.p, ALIGN(mp.a)))) err(1, "realloc");
-		return;
+		if (!warned) {
+			warnx("<warn> internal pools are full");
+			++warned;
+		}
+		return 0;
 	}
 	memset(&freesiz, 0, sizeof(freesiz));
 	if (!(mp.p = malloc(ALIGN(MPOOLSIZE)))) err(1, "malloc");
 	mp.n = 0;
 	mp.a = MPOOLSIZE;
+	return 1;
 }
 
 void *
@@ -37,7 +43,10 @@ alloc(size_t n)
 {
 	void *p;
 	n = (n + 16) - (n & (16 - 1));
-	while (n > mp.a) ready();
+	if (n > mp.a - mp.n) {
+		ready();
+		if ((n > mp.a - mp.n) && !ready()) return malloc(n);
+	}
 	p = mp.p + mp.n;
 	mp.n += n;
 	return p;
@@ -46,15 +55,20 @@ alloc(size_t n)
 void
 alloc_free(void *p, size_t n)
 {
-	if (ISSALLOC(p) || ISMINE(p)) mp.n -= n;
+	if (ISSALLOC(p) || ISPOOL(p)) { mp.n -= n; return; }
+	if (!p) return;
+	if (!ISSTACK(p)) free(p);
 }
 
 void *
 alloc_re(void *p, size_t o, size_t n)
 {
 	void *x;
-	x = alloc(n);
-	return memcpy(x, p, o);
+	if (ISMINE(p)) {
+		x = alloc(n);
+		return memcpy(x, p, o);
+	}
+	return realloc(p, n);
 }
 
 /* stupid alloc */
@@ -81,7 +95,8 @@ void
 sfree(void *p)
 {
 	size_t *len;
-	if (!(p && ISMINE(p))) return;
+	if (!p) return;
+	if (!ISMINE(p)) { free(p); return; }
 	len = (void *)((char *)p - sizeof(*len));
 	freesiz += *len;
 }
@@ -91,6 +106,7 @@ srealloc(void *p, size_t n)
 {
 	size_t *len;
 	if (!p) return alloc(n);
+	if (!ISMINE(p)) return realloc(p, n);
 	len = (void *)((char *)p - sizeof(*len));
 	freesiz += *len;
 	return alloc_re(p, *len, n);
