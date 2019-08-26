@@ -65,7 +65,7 @@ add(Package *pkg)
 
 	membuf_strinit(&p1, NULL, 512);
 	membuf_strinit(&p2, NULL, 512);
-	membuf_vstrcat(&p1, PKG_TMP, pkg->name, "#", pkg->version, "/");
+	membuf_vstrcat(&p1, PKG_TMP, pkg->name.p, "#", pkg->version.p, "/");
 	membuf_strcat(&p2, PKG_DIR);
 	for (p = pkg->files.p; *p; p += strlen(p)+1) {
 		p1.n -= membuf_strcat(&p1, p);
@@ -110,7 +110,7 @@ explode(Package *pkg)
 	rval  = 0;
 
 	membuf_strinit(&p1, NULL, 512);
-	membuf_vstrcat(&p1, PKG_TMP, pkg->name, "#", pkg->version);
+	membuf_vstrcat(&p1, PKG_TMP, pkg->name.p, "#", pkg->version.p);
 
 	if (mkdir(p1.p, ACCESSPERMS) < 0) {
 		warn("mkdir %s", p1.p);
