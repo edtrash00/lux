@@ -63,7 +63,7 @@ move(const char *src, const char *dest)
 	d = alloc(n);
 	memcpy(d, dest, n);
 
-	if (mkdirp(d, st.st_mode, ACCESSPERMS) < 0)
+	if (mkdirp(d, ACCESSPERMS, ACCESSPERMS) < 0)
 		return -1;
 
 	alloc_free(d, n);
