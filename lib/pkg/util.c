@@ -153,7 +153,7 @@ chksum(Package *pkg, size_t len, unsigned sum)
 		if (!p)
 			continue;
 
-		siz  = strtobase(buf + r, 0, SIZE_MAX, 10);
+		siz  = strtobase(buf + r, 0, LLONG_MAX, 10);
 		sval = strtobase(p, 0, UINT_MAX, 10);
 		break;
 	}
@@ -163,7 +163,7 @@ chksum(Package *pkg, size_t len, unsigned sum)
 		warnx("cksum %s: entry not found", pkg->name.p);
 		return -1;
 	}
-	if ((sum != siz) || (sum != sval)) {
+	if ((len != siz) || (sum != sval)) {
 		warnx("cksum %s: checksum mismatch", pkg->name.p);
 		return -1;
 	}
