@@ -274,24 +274,34 @@ static int
 populate_chksum(void)
 {
 	Membuf p;
-	int fd;
+	int fd, rval;
 
 	membuf_strinit(&p, NULL, 512);
 	p.n -= membuf_strcat(&p, PKG_CHK);
 
+	fd = -1;
+	rval = 0;
+
 	if ((fd = open(p.p, MODERWCT, DEFFILEMODE)) < 0) {
 		warn("open %s", p.p);
-		return -1;
+		goto failure;
 	}
 
 	membuf_vstrcat(&p, PKG_SDB, PKG_FSG);
 	if (netfd(p.p, fd, NULL) < 0) {
 		close(fd);
-		return -1;
+		goto failure;
 	}
 
-	close(fd);
-	return 0;
+
+	goto done;;
+failure:
+	rval = 1;
+done:
+	if (fd != -1)
+		close(fd);
+	membuf_free(&p);
+	return -1;
 }
 
 static int
