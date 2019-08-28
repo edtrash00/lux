@@ -30,6 +30,7 @@ enum Hash {
 	SMDEPS  = 64865, /* show-mdeps        */
 	SNAME   = 5979,  /* show-name         */
 	SRDEPS  = 29414, /* show-rdeps        */
+	SSIZE   = 31953, /* show-size         */
 	SVER    = 36360, /* show-version      */
 	UNREG   = 37948, /* unregister        */
 };
@@ -258,6 +259,13 @@ show_rdeps(Package *pkg)
 }
 
 static int
+show_size(Package *pkg)
+{
+	printf("%zu\n", pkg->size);
+	return 0;
+}
+
+static int
 show_ver(Package *pkg)
 {
 	if (*pkg->version.p) puts(pkg->version.p);
@@ -301,7 +309,7 @@ done:
 	if (fd != -1)
 		close(fd);
 	membuf_free(&p);
-	return -1;
+	return rval;
 }
 
 static int
@@ -445,6 +453,10 @@ main(int argc, char *argv[])
 		break;
 	case SRDEPS:
 		fn   = show_rdeps;
+		type = LOCAL;
+		break;
+	case SSIZE:
+		fn   = show_size;
 		type = LOCAL;
 		break;
 	case SVER:

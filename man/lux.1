@@ -1,4 +1,4 @@
-.Dd August 25, 2019
+.Dd August 28, 2019
 .Dt LUX 1
 .Os
 .Sh NAME
@@ -35,12 +35,12 @@ Remove a local package.
 Inflate and extract a remote package from cache.
 .It Cm fetch
 Fetch remote package to the cache.
-.It Cm register
-Register a remote package to the local database.
 .It Cm populate-chksum
 Populate the checksum file.
 .It Cm populate-remote
 Populate remote database.
+.It Cm register
+Register a remote package to the local database.
 .It Cm show-description
 Write description from local package to the standard output.
 .It Cm show-files
@@ -49,12 +49,14 @@ to the standard output.
 .It Cm show-license
 Write license from local package to the standard output.
 .It Cm show-mdeps
-Write construction dependencies from local package
+Write construction dependencies from local package to the standard output.
 to the standard output.
 .It Cm show-name
 Write name from local package to the standard output.
 .It Cm show-rdeps
-Write real time dependencies from local package
+Write real time dependencies from local package to the standard output.
+.It Cm show-size
+Write the size, in bytes, from local package to the standard output.
 to the standard output.
 .It Cm show-version
 Write version from local package to the standard output.
