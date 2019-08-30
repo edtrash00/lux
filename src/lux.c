@@ -63,14 +63,15 @@ add(Package *pkg)
 
 	rval = 0;
 
-	membuf_strinit(&p1);
-	membuf_vstrcat(&p1, PKG_TMP, pkg->name.p, "#", pkg->version.p, "/");
 	while ((p = db_walkfile(pkg))) {
-		p1.n -= membuf_strcat(&p1, p);
+		membuf_strinit(&p1);
+		membuf_vstrcat(&p1, PKG_TMP, pkg->name.p, "#",
+		    pkg->version.p, "/", p);
 		membuf_strinit(&p2);
 		membuf_vstrcat(&p2, PKG_DIR, p);
 		if (move(p1.p, p2.p) < 0) rval = 1;
 		membuf_free(&p2);
+		membuf_free(&p1);
 	}
 
 	membuf_free(&p1);

@@ -67,8 +67,10 @@ move(const char *src, const char *dest)
 
 	if (S_ISDIR(st.st_mode)) {
 		n = strlen(dest);
-		d = alloc(n);
+		d = alloc(n+2);
 		memcpy(d, dest, n);
+		memcpy(d + n, "/\0", 2);
+		n += 2;
 		if (mkdirp(d, st.st_mode, ACCESSPERMS) < 0) {
 			alloc_free(d, n);
 			return -1;
