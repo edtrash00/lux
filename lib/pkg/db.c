@@ -10,7 +10,7 @@
 { if ((a).n) continue; membuf_strinit(&(a)); membuf_strcat(&(a), (b)); }
 
 #define init2(a, b) \
-{ membuf_strcat(&(a), (b)); (a).n++; }
+{ if (!(a).p) membuf_strinit(&(a)); membuf_strcat(&(a), (b)); (a).n++; }
 
 enum {
 	NAME        = 31371, /* name        */

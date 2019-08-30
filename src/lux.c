@@ -48,7 +48,7 @@ pnode(Membuf mp)
 	p = mp.p;
 	for (;;) {
 		p += printf("%s", p) + 1;
-		if (!(*p)) break;
+		if (p - mp.p >= mp.n) break;
 		putchar(' ');
 	}
 }
