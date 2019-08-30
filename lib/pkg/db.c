@@ -6,10 +6,8 @@
 
 #include "pkg.h"
 
-#define clean(x) if ((x).p) { memset((x).p, 0, (x).n); (x).n = 0; }
-
 #define init1(a, b) \
-{ (a).n = 0; membuf_strcat(&(a), (b)); }
+{ if ((a).n) continue; membuf_strinit(&(a)); membuf_strcat(&(a), (b)); }
 
 #define init2(a, b) \
 { membuf_strcat(&(a), (b)); (a).n++; }
@@ -28,44 +26,34 @@ enum {
 static void
 db_clean(Package *pkg)
 {
-	clean(pkg->files);
-	clean(pkg->mdeps);
-	clean(pkg->rdeps);
-}
-
-void
-db_init(Package *pkg)
-{
-	memset(pkg, 0, sizeof(*pkg));
-
-	membuf_strinit(&pkg->name, NULL, PKG_NAMEMAX);
-	membuf_strinit(&pkg->version, NULL, PKG_VERMAX);
-	membuf_strinit(&pkg->license, NULL, PKG_LICMAX);
-	membuf_strinit(&pkg->description, NULL, PKG_DESCMAX);
-	membuf_strinit(&pkg->path, NULL, PKG_PATHMAX);
-
-	membuf_strinit(&pkg->files, NULL, (POOLSIZE / 2) / 2);
-	membuf_strinit(&pkg->mdeps, NULL, (POOLSIZE / 2) / 4);
-	membuf_strinit(&pkg->rdeps, NULL, (POOLSIZE / 2) / 4);
+	membuf_free(&pkg->name);
+	membuf_free(&pkg->version);
+	membuf_free(&pkg->license);
+	membuf_free(&pkg->description);
+	membuf_free(&pkg->path);
+	membuf_free(&pkg->mdeps);
+	membuf_free(&pkg->rdeps);
 }
 
 Package *
 db_open(Package *pkg, char *file)
 {
-	FILE *fp;
 	ssize_t len;
 	char buf[LINE_MAX];
 	char *p;
 
-	if (!(fp = fopen(file, "r"))) {
+	if (pkg->fp)
+		fclose(pkg->fp);
+
+	if (!(pkg->fp = fopen(file, "r"))) {
 		warn("fopen %s", file);
 		goto failure;
 	}
 
 	db_clean(pkg);
-	init1(pkg->path, file);
+	do { init1(pkg->path, file) } while (0);
 
-	while ((len = fgetline(buf, sizeof(buf), fp)) != EOF) {
+	while ((len = fgetline(buf, sizeof(buf), pkg->fp)) != EOF) {
 		buf[len-1] = '\0'; /* remove trailing newline */
 
 		/* ignore blank lines */
@@ -92,7 +80,7 @@ db_open(Package *pkg, char *file)
 			init1(pkg->description, p);
 			break;
 		case SIZE:
-			pkg->size = strtobase(p, 0, UINT_MAX, 10);
+			pkg->size = strtobase(p, 0, LLONG_MAX, 10);
 			break;
 		case RUNDEP:
 			init2(pkg->rdeps, p);
@@ -101,8 +89,7 @@ db_open(Package *pkg, char *file)
 			init2(pkg->mdeps, p);
 			break;
 		case AFILE:
-			init2(pkg->files, p);
-			break;
+			goto done;
 		default:
 			continue;
 		}
@@ -112,14 +99,37 @@ db_open(Package *pkg, char *file)
 failure:
 	pkg = NULL;
 done:
-	if (fp)
-		fclose(fp);
-
 	return pkg;
 }
 
-void
-db_free(Package *pkg)
+char *
+db_walkfile(Package *pkg)
 {
-	(void)pkg;
+	ssize_t len;
+	char buf[LINE_MAX];
+	char *p;
+
+	while ((len = fgetline(buf, sizeof(buf), pkg->fp)) != EOF) {
+		buf[len-1] = '\0';
+
+		/* ignore blank lines */
+		if (*buf == '\0' || *buf == '#')
+			continue;
+
+		if ((p = strchr(buf, ':')))
+			*p++ = '\0';
+
+		if (!p || !(*p))
+			continue;
+
+		switch (strtohash(buf)) {
+		case AFILE:
+			return p;
+		default:
+			warnx("bad formed database file");
+			continue;
+		}
+	}
+
+	return NULL;
 }

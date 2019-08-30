@@ -122,13 +122,16 @@ chksum(Package *pkg, size_t len, unsigned sum)
 	char buf[LINE_MAX];
 	char *p;
 
-	membuf_strinit(&mp, NULL, 512);
-	mp.n -= membuf_strcat(&mp, PKG_CHK);
+	membuf_strinit(&mp);
+	membuf_strcat(&mp, PKG_CHK);
 	if (!(fp = fopen(mp.p, "r"))) {
 		warn("fopen %s", mp.p);
 		membuf_free(&mp);
 		return -1;
 	}
+	membuf_free(&mp);
+
+	membuf_strinit(&mp);
 	membuf_vstrcat(&mp, pkg->name.p, "#", pkg->version.p);
 
 	siz = 0;
@@ -224,7 +227,7 @@ strtomode(const char *str, mode_t mode)
 }
 
 char *
-dircomp(char *path)
+dircomp(const char *path)
 {
 	static char s[PATH_MAX];
 	strncpy(s, path, sizeof(s));

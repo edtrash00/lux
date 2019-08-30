@@ -42,12 +42,11 @@ enum RTypes {
 };
 
 static void
-pnode(Membuf mp, int isfile)
+pnode(Membuf mp)
 {
 	char *p;
 	p = mp.p;
 	for (;;) {
-		if (isfile) fputs(PKG_DIR, stdout);
 		p += printf("%s", p) + 1;
 		if (!(*p)) break;
 		putchar(' ');
@@ -64,14 +63,14 @@ add(Package *pkg)
 
 	rval = 0;
 
-	membuf_strinit(&p1, NULL, 512);
-	membuf_strinit(&p2, NULL, 512);
+	membuf_strinit(&p1);
 	membuf_vstrcat(&p1, PKG_TMP, pkg->name.p, "#", pkg->version.p, "/");
-	membuf_strcat(&p2, PKG_DIR);
-	for (p = pkg->files.p; *p; p += strlen(p)+1) {
+	while ((p = db_walkfile(pkg))) {
 		p1.n -= membuf_strcat(&p1, p);
-		p2.n -= membuf_strcat(&p2, p);
+		membuf_strinit(&p2);
+		membuf_vstrcat(&p2, PKG_DIR, p);
 		if (move(p1.p, p2.p) < 0) rval = 1;
+		membuf_free(&p2);
 	}
 
 	membuf_free(&p1);
@@ -89,9 +88,9 @@ del(Package *pkg)
 
 	rval = 0;
 
-	membuf_strinit(&mp, NULL, 512);
+	membuf_strinit(&mp);
 	membuf_strcat(&mp, PKG_DIR);
-	for (p = pkg->files.p; *p; p += strlen(p)+1) {
+	while ((p = db_walkfile(pkg))) {
 		mp.n -= membuf_strcat(&mp, p);
 		if (remove(mp.p) < 0) rval = 1;
 	}
@@ -104,38 +103,39 @@ del(Package *pkg)
 static int
 explode(Package *pkg)
 {
-	Membuf p1, p2;
+	Membuf mp;
 	int fd[2], rval;
 
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	membuf_strinit(&p1, NULL, 512);
-	membuf_strinit(&p2, NULL, 512);
+	membuf_strinit(&mp);
+	membuf_vstrcat(&mp, PKG_TMP, pkg->name.p, "#", pkg->version.p);
 
-	membuf_vstrcat(&p1, PKG_TMP, pkg->name.p, "#", pkg->version.p);
-
-	if (mkdir(p1.p, ACCESSPERMS) < 0) {
-		warn("mkdir %s", p1.p);
+	if (mkdir(mp.p, ACCESSPERMS) < 0) {
+		warn("mkdir %s", mp.p);
 		goto failure;
 	}
 
 	/* unarchive acts locally */
-	if (chdir(p1.p) < 0) {
-		warn("chdir %s", p1.p);
+	if (chdir(mp.p) < 0) {
+		warn("chdir %s", mp.p);
 		goto failure;
 	}
 
-	membuf_vstrcat(&p2, p1.p, ".ustar");
-	membuf_strcat(&p1, PKG_FMT);
+	membuf_strcat(&mp, PKG_FMT);
 
-	if ((fd[0] = open(p1.p, O_RDONLY, 0)) < 0) {
-		warn("open %s", p1.p);
+	if ((fd[0] = open(mp.p, O_RDONLY, 0)) < 0) {
+		warn("open %s", mp.p);
 		goto failure;
 	}
+	membuf_free(&mp);
 
-	if ((fd[1] = open(p2.p, MODERWCT, DEFFILEMODE)) < 0) {
-		warn("open %s", p2.p);
+	membuf_strinit(&mp);
+	membuf_vstrcat(&mp, PKG_TMP, pkg->name.p, "#", pkg->version.p, ".ust");
+
+	if ((fd[1] = open(mp.p, MODERWCT, DEFFILEMODE)) < 0) {
+		warn("open %s", mp.p);
 		goto failure;
 	}
 
@@ -154,8 +154,7 @@ done:
 		close(fd[0]);
 	if (fd[1] != -1)
 		close(fd[1]);
-	membuf_free(&p1);
-	membuf_free(&p2);
+	membuf_free(&mp);
 	return rval;
 }
 
@@ -170,17 +169,19 @@ fetch(Package *pkg)
 	fd = -1;
 	rval  = 0;
 
-	membuf_strinit(&mp, NULL, 512);
+	membuf_strinit(&mp);
 	membuf_vstrcat(&mp, PKG_TMP, pkg->name.p, "#", pkg->version.p, PKG_FMT);
 	if ((fd = open(mp.p, MODERWCT, DEFFILEMODE)) < 0) {
 		warn("open %s", mp.p);
 		goto failure;
 	}
+	membuf_free(&mp);
 
-	mp.n = 0;
+	membuf_strinit(&mp);
 	membuf_vstrcat(&mp, PKG_SRC, pkg->name.p, "#", pkg->version.p, PKG_FMT);
 	if (netfd(mp.p, fd, NULL) < 0)
 		goto failure;
+	membuf_free(&mp);
 
 	lseek(fd, 0, SEEK_SET);
 
@@ -205,7 +206,7 @@ regpkg(Package *pkg)
 {
 	Membuf p;
 
-	membuf_strinit(&p, NULL, 512);
+	membuf_strinit(&p);
 	membuf_vstrcat(&p, GETDB(LOCAL), pkg->name.p);
 
 	if (copy(pkg->path.p, p.p) < 0)
@@ -226,7 +227,10 @@ show_desc(Package *pkg)
 static int
 show_files(Package *pkg)
 {
-	pnode(pkg->files, 1);
+	char *p;
+	if (!(p = db_walkfile(pkg))) return 0;
+	printf("%s%s", PKG_DIR, p);
+	while ((p = db_walkfile(pkg))) printf(" %s%s", PKG_DIR, p);
 	return 0;
 }
 
@@ -240,7 +244,7 @@ show_lic(Package *pkg)
 static int
 show_mdeps(Package *pkg)
 {
-	pnode(pkg->mdeps, 0);
+	pnode(pkg->mdeps);
 	return 0;
 }
 
@@ -254,7 +258,7 @@ show_name(Package *pkg)
 static int
 show_rdeps(Package *pkg)
 {
-	pnode(pkg->rdeps, 0);
+	pnode(pkg->rdeps);
 	return 0;
 }
 
@@ -284,8 +288,8 @@ populate_chksum(void)
 	Membuf p;
 	int fd, rval;
 
-	membuf_strinit(&p, NULL, 512);
-	p.n -= membuf_strcat(&p, PKG_CHK);
+	membuf_strinit(&p);
+	membuf_strcat(&p, PKG_CHK);
 
 	fd = -1;
 	rval = 0;
@@ -294,13 +298,15 @@ populate_chksum(void)
 		warn("open %s", p.p);
 		goto failure;
 	}
+	membuf_free(&p);
 
+	membuf_strinit(&p);
 	membuf_vstrcat(&p, PKG_SDB, PKG_FSG);
 	if (netfd(p.p, fd, NULL) < 0) {
 		close(fd);
 		goto failure;
 	}
-
+	membuf_free(&p);
 
 	goto done;;
 failure:
@@ -321,26 +327,30 @@ populate_remote(void)
 	fd[0] = fd[1] = -1;
 	rval  = 0;
 
-	membuf_strinit(&p, NULL, 512);
-	p.n -= membuf_vstrcat(&p, PKG_TMP, PKG_FDB);
+	membuf_strinit(&p);
+	membuf_vstrcat(&p, PKG_TMP, PKG_FDB);
 
 	if ((fd[0] = open(p.p, MODERWCT, DEFFILEMODE)) < 0) {
 		warn("open %s", p.p);
 		goto failure;
 	}
+	membuf_free(&p);
 
-	p.n -= membuf_vstrcat(&p, PKG_SDB, PKG_FDB);
+	membuf_strinit(&p);
+	membuf_vstrcat(&p, PKG_SDB, PKG_FDB);
 
 	if (netfd(p.p, fd[0], NULL) < 0)
 		goto failure;
-	sfreeall();
+	membuf_free(&p);
 
-	p.n -= membuf_vstrcat(&p, PKG_TMP, PKG_FDB, ".ustar");
+	membuf_strinit(&p);
+	membuf_vstrcat(&p, PKG_TMP, PKG_FDB, ".ustar");
 
 	if ((fd[1] = open(p.p, MODERWCT, DEFFILEMODE)) < 0) {
 		warn("open %s", p.p);
 		goto failure;
 	}
+	membuf_free(&p);
 
 	lseek(fd[0], 0, SEEK_SET);
 	if (uncomp(fd[0], fd[1]) < 0)
@@ -380,7 +390,7 @@ int
 main(int argc, char *argv[])
 {
 	Membuf p;
-	Package pkg;
+	Package pkg = { 0 };
 	int (*fn)(Package *);
 	int rval, type, atype;
 	unsigned hash;
@@ -473,10 +483,8 @@ main(int argc, char *argv[])
 
 	argc--, argv++;
 
-	db_init(&pkg);
-
-	membuf_strinit(&p, NULL, 512);
-	membuf_vstrcat(&p, GETDB((atype == 0) ? type : atype), "/");
+	membuf_strinit(&p);
+	membuf_strcat(&p, GETDB((atype == 0) ? type : atype));
 	for (; *argv; argc--, argv++) {
 		p.n -= membuf_strcat(&p, *argv);
 		if (!(db_open(&pkg, p.p))) {

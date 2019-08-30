@@ -24,7 +24,7 @@ copy(const char *src, const char *dest)
 		goto failure;
 	}
 
-	if ((tf = open(dest, O_WRONLY | O_CREAT | O_EXCL, 644)) < 0) {
+	if ((tf = open(dest, O_WRONLY | O_CREAT | O_EXCL, 0644)) < 0) {
 		warn("open %s", dest);
 		goto failure;
 	}
@@ -69,7 +69,7 @@ move(const char *src, const char *dest)
 		n = strlen(dest);
 		d = alloc(n);
 		memcpy(d, dest, n);
-		if (mkdirp(dest, st.st_mode, ACCESSPERMS) < 0) {
+		if (mkdirp(d, st.st_mode, ACCESSPERMS) < 0) {
 			alloc_free(d, n);
 			return -1;
 		}
@@ -98,7 +98,7 @@ remove(const char *path) {
 
 	fn = S_ISDIR(st.st_mode) ? rmdir : unlink;
 
-	if (fn(path) < 0) {
+	if (fn(path) < 0 && errno != ENOTEMPTY && errno != EEXIST) {
 		warn("remove %s", path);
 		return -1;
 	}

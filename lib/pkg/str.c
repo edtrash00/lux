@@ -6,18 +6,20 @@
 #include "pkg.h"
 
 void
-membuf_strinit(Membuf *p, char *s, size_t n)
+membuf_strinit(Membuf *p)
 {
-	p->a = n;
+	p->a = 0;
 	p->n = 0;
-	p->p = alloc(n);
+	p->p = ialloc();
 }
 
 static ssize_t
 membuf_strcats(Membuf *p, char *s, size_t n)
 {
-	if (p->n + n >= p->a)
-		return -1;
+	if (p->n + n >= p->a) {
+		p->p = ialloc_re(p->p, p->n, p->n + n + 1);
+		p->a += n + 1;
+	}
 
 	memmove(p->p + p->n, s, n);
 	p->n += n;
@@ -29,16 +31,7 @@ membuf_strcats(Membuf *p, char *s, size_t n)
 ssize_t
 membuf_strcat(Membuf *p, char *s)
 {
-	ssize_t n;
-
-	n = strlen(s);
-
-	if (p->n + n >= p->a) {
-		while (p->n + n >= p->a) p->a <<= 1;
-		p->p = alloc_re(p->p, p->n, p->a);
-	}
-
-	return membuf_strcats(p, s, n);
+	return membuf_strcats(p, s, strlen(s));
 }
 
 ssize_t
@@ -46,7 +39,7 @@ membuf_vstrcat_(Membuf *p, char *s0, ...)
 {
 	va_list ap;
 	ssize_t r, t;
-	char   *s;
+	char *s;
 
 	t = 0;
 	s = s0;
@@ -69,4 +62,5 @@ void
 membuf_free(Membuf *p)
 {
 	alloc_free(p->p, p->a);
+	memset(p, 0, sizeof(*p));
 }

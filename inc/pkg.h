@@ -19,21 +19,23 @@ struct Membuf {
 typedef struct Package Package;
 
 struct Package {
+	FILE  *fp;
 	Membuf description;
-	Membuf files;
 	Membuf license;
 	Membuf mdeps;
 	Membuf name;
 	Membuf path;
 	Membuf rdeps;
 	Membuf version;
-	off_t size;
+	off_t  size;
 };
 
 /* alloc.c */
 void * alloc(size_t);
 void   alloc_free(void *, size_t);
 void * alloc_re(void *, size_t, size_t);
+void * ialloc(void);
+void * ialloc_re(void *, size_t, size_t);
 void * salloc(size_t);
 void * scalloc(size_t, size_t);
 void   sfree(void *);
@@ -45,9 +47,8 @@ int uncomp(int, int);
 int unarchive(int);
 
 /* db.c */
-void      db_free(Package *);
-void      db_init(Package *);
 Package * db_open(Package *, char *);
+char    * db_walkfile(Package *);
 
 /* fgetline.c */
 ssize_t fgetline(char *, size_t, FILE *);
@@ -64,7 +65,7 @@ int netfd(char *, int, const char *);
 /* str.c */
 void    membuf_free(Membuf *);
 #define membuf_vstrcat(a, b, ...) membuf_vstrcat_((a), (b), __VA_ARGS__, NULL)
-void    membuf_strinit(Membuf *, char *, size_t);
+void    membuf_strinit(Membuf *);
 ssize_t membuf_strcat(Membuf *, char *);
 ssize_t membuf_vstrcat_(Membuf *, char *, ...);
 
@@ -74,6 +75,6 @@ unsigned filetosum(int, size_t *);
 unsigned strtohash(char *);
 long long strtobase(const char *, long long, long long, int);
 mode_t strtomode(const char *, mode_t);
-char * dircomp(char *);
+char * dircomp(const char *);
 int s_chown(const char *, uid_t, gid_t);
 int s_lchown(const char *, uid_t, gid_t);

@@ -31,7 +31,7 @@ ready(void)
 		}
 		return 0;
 	}
-	memset(&freesiz, 0, sizeof(freesiz));
+	freesiz = 0;
 	if (!(mp.p = malloc(ALIGN(MPOOLSIZE)))) err(1, "malloc");
 	mp.n = 0;
 	mp.a = MPOOLSIZE;
@@ -55,8 +55,8 @@ alloc(size_t n)
 void
 alloc_free(void *p, size_t n)
 {
-	if (ISSALLOC(p) || ISPOOL(p)) { mp.n -= n; return; }
 	if (!p) return;
+	if (ISSALLOC(p) || ISPOOL(p)) { mp.n -= n; return; }
 	if (!ISSTACK(p)) free(p);
 }
 
@@ -65,20 +65,39 @@ alloc_re(void *p, size_t o, size_t n)
 {
 	void *x;
 	if (ISMINE(p)) {
+		warnx("<warn> bad memory use");
 		x = alloc(n);
 		return memcpy(x, p, o);
 	}
 	return realloc(p, n);
 }
 
-/* stupid alloc */
+/* incremental alloc */
+void *
+ialloc(void)
+{
+	return mp.p + mp.n;
+}
 
+void *
+ialloc_re(void *p, size_t o, size_t n) {
+	if (mp.n + n > mp.a) return alloc_re(p, o, n);
+	mp.n += n - o;
+	return p;
+}
+
+/* stupid alloc */
 void *
 salloc(size_t n)
 {
-	size_t *len;
-	len = alloc(sizeof(*len)); *len = n;
-	return alloc(n);
+	void *p;
+	n = n + sizeof(size_t);
+	n = (n + 16) - (n & (16 - 1));
+	freesiz += n;
+	p = alloc(n);
+	memcpy(p, &n, sizeof(n));
+	p = (char *)p + sizeof(size_t);
+	return p;
 }
 
 void *
@@ -94,21 +113,17 @@ scalloc(size_t m, size_t n)
 void
 sfree(void *p)
 {
-	size_t *len;
-	if (!p) return;
-	if (!ISMINE(p)) { free(p); return; }
-	len = (void *)((char *)p - sizeof(*len));
-	freesiz += *len;
+	(void)p;
+	return;
 }
 
 void *
 srealloc(void *p, size_t n)
 {
 	size_t *len;
-	if (!p) return alloc(n);
-	if (!ISMINE(p)) return realloc(p, n);
+	if (!p) return salloc(n);
 	len = (void *)((char *)p - sizeof(*len));
-	freesiz += *len;
+	freesiz += *len + sizeof(*len);
 	return alloc_re(p, *len, n);
 }
 

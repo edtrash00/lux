@@ -8,7 +8,7 @@
 int
 netfd(char *URL, int fd, const char *flags)
 {
-	char buf[BUFSIZ];
+	char buf[NETBUF];
 	int rval;
 	ssize_t readcnt, total;
 	struct fetchIO *f;
@@ -51,6 +51,7 @@ netfd(char *URL, int fd, const char *flags)
 failure:
 	rval = -1;
 done:
+	sfreeall();
 	if (f)
 		fetchIO_close(f);
 	if (url)
