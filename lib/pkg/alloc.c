@@ -19,7 +19,7 @@ typedef union { char x[16]; double d; } aligned;
 static aligned stackpool[POOLSIZE/16];
 static Membuf mp = { POOLSIZE, 0, (char *)stackpool };
 static size_t freesiz;
-static int warned;
+static int warned, warned2;
 
 static int
 ready(void)
@@ -65,7 +65,10 @@ alloc_re(void *p, size_t o, size_t n)
 {
 	void *x;
 	if (ISMINE(p)) {
-		warnx("<warn> bad memory use");
+		if (warned2) {
+			warnx("<warn> non-optimal memory use");
+			warned2++;
+		}
 		x = alloc(n);
 		return memcpy(x, p, o);
 	}
