@@ -61,6 +61,6 @@ membuf_vstrcat_(Membuf *p, char *s0, ...)
 void
 membuf_free(Membuf *p)
 {
-	alloc_free(p->p, p->a);
+	ialloc_free(p->p, p->a);
 	memset(p, 0, sizeof(*p));
 }

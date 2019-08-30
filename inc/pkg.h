@@ -35,6 +35,7 @@ void * alloc(size_t);
 void   alloc_free(void *, size_t);
 void * alloc_re(void *, size_t, size_t);
 void * ialloc(void);
+void   ialloc_free(void *, size_t);
 void * ialloc_re(void *, size_t, size_t);
 void * salloc(size_t);
 void * scalloc(size_t, size_t);

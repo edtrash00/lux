@@ -57,7 +57,8 @@ alloc_free(void *p, size_t n)
 {
 	if (!p) return;
 	if (ISSALLOC(p) || ISPOOL(p)) {
-		mp.n -= (n + 16) - (n & (16 - 1));
+		n = (n + 16) - (n & (16 - 1));
+		mp.n -= n;
 		return;
 	}
 	if (!ISSTACK(p)) free(p);
@@ -90,6 +91,12 @@ ialloc_re(void *p, size_t o, size_t n) {
 	if (mp.n + n > mp.a) return alloc_re(p, o, n);
 	mp.n += n - o;
 	return p;
+}
+
+void
+ialloc_free(void *p, size_t n) {
+	if (!p) return;
+	mp.n -= n;
 }
 
 /* stupid alloc */
