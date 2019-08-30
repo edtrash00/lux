@@ -56,7 +56,10 @@ void
 alloc_free(void *p, size_t n)
 {
 	if (!p) return;
-	if (ISSALLOC(p) || ISPOOL(p)) { mp.n -= n; return; }
+	if (ISSALLOC(p) || ISPOOL(p)) {
+		mp.n -= (n + 16) - (n & (16 - 1));
+		return;
+	}
 	if (!ISSTACK(p)) free(p);
 }
 
@@ -65,7 +68,7 @@ alloc_re(void *p, size_t o, size_t n)
 {
 	void *x;
 	if (ISMINE(p)) {
-		if (warned2) {
+		if (!warned2) {
 			warnx("<warn> non-optimal memory use");
 			warned2++;
 		}
